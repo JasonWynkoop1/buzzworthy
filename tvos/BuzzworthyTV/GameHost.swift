@@ -41,6 +41,7 @@ final class GameHost: ObservableObject {
         let code = call("create", packsJSON()) ?? ""
         roomCode = code
         if !code.isEmpty { realtime.join("bw:\(code)") }
+        NSLog("BUZZWORTHY_ROOM %@", code)
     }
 
     func appBecameActive() {

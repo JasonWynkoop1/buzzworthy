@@ -38,3 +38,46 @@ jobs:
           npm init -y >/dev/null
           npm install @supabase/supabase-js@2 >/dev/null
           node protocol-test.js
+
+  simulator:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Build for the Apple TV simulator
+        working-directory: tvos
+        run: |
+          xcodebuild -project BuzzworthyTV.xcodeproj -scheme BuzzworthyTV -configuration Debug \
+            -sdk appletvsimulator -derivedDataPath build CODE_SIGNING_ALLOWED=NO build | tail -n 5
+      - name: Boot a simulator and launch the app
+        working-directory: tvos
+        run: |
+          xcrun simctl list runtimes
+          DEV=$(xcrun simctl list devices available | grep -m1 'Apple TV 4K' | sed -E 's/.*\(([0-9A-F-]{36})\).*/\1/')
+          if [ -z "$DEV" ]; then RT=$(xcrun simctl list runtimes | grep -m1 tvOS | sed -E 's/.* - (com\.apple[^ ]+).*/\1/'); DEV=$(xcrun simctl create bwtv "com.apple.CoreSimulator.SimDeviceType.Apple-TV-4K-3rd-generation-4K" "$RT"); fi
+          xcrun simctl boot "$DEV"
+          xcrun simctl bootstatus "$DEV" -b
+          xcrun simctl install booted build/Build/Products/Debug-appletvsimulator/BuzzworthyTV.app
+          xcrun simctl launch --console booted com.buzzworthy.party.tv > applog.txt 2>&1 &
+          for i in $(seq 1 60); do grep -q BUZZWORTHY_ROOM applog.txt && break; sleep 1; done
+          cat applog.txt | tail -20
+          CODE=$(grep -o 'BUZZWORTHY_ROOM [A-Z]*' applog.txt | head -1 | awk '{print $2}')
+          echo "ROOM=$CODE" >> $GITHUB_ENV
+          sleep 4
+      - name: Play part of a game from fake phones
+        working-directory: tvos/ci
+        run: |
+          npm init -y >/dev/null
+          npm install @supabase/supabase-js@2 >/dev/null
+          node drive.js "$ROOM" ../shots
+      - name: App log
+        if: always()
+        working-directory: tvos
+        run: grep -i "buzzworthy" applog.txt | tail -40 || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: screenshots
+          path: tvos/shots
