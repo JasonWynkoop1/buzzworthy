@@ -35,10 +35,22 @@ final class GameHost: ObservableObject {
         newRoom()
     }
 
-    /// Starts a brand new room with a new code.
+    private var roomRequest = 0
+
+    /// Starts a brand new room with a new code, using the newest questions
+    /// from the website (or the built-in ones if the website can't be reached).
     func newRoom() {
+        roomRequest += 1
+        let request = roomRequest
+        PackLoader.load { [weak self] packs in
+            guard let self = self, request == self.roomRequest else { return }
+            self.createRoom(packs ?? self.packsJSON())
+        }
+    }
+
+    private func createRoom(_ packs: String) {
         realtime.leaveAll()
-        let code = call("create", packsJSON()) ?? ""
+        let code = call("create", packs) ?? ""
         roomCode = code
         if !code.isEmpty { realtime.join("bw:\(code)") }
         NSLog("BUZZWORTHY_ROOM %@", code)
