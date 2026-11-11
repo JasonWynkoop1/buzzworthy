@@ -66,17 +66,28 @@ async function phone(name) {
     await wait(300);
     console.log('answer2', JSON.stringify(await cat.act({ type: 'answer', text: 'four' })));
   }
-  await wait(1000);
-  shot('6-reveal');
-  console.log('end round', JSON.stringify(await ann.act({ type: 'advance' })));
-  await wait(800);
-  console.log('end round', JSON.stringify(await ann.act({ type: 'endRound' })));
+  // Ann buzzes and the captain flips her answer to correct, so she has money for the final.
+  for (let i = 0; i < 10 && ann.state.phase !== 'open'; i++) await wait(300);
+  console.log('ann buzz', JSON.stringify(await ann.act({ type: 'buzz' })));
+  await wait(300);
+  console.log('ann answer', JSON.stringify(await ann.act({ type: 'answer', text: 'no idea' })));
+  await wait(500);
+  console.log('flip', JSON.stringify(await ann.act({ type: 'override' })));
   await wait(1200);
+  shot('6-reveal');
+  const until = async (ph) => { for (let i = 0; i < 30 && ann.state.phase !== ph; i++) await wait(300); };
+  await ann.act({ type: 'advance' });
+  await until('board');
+  console.log('end round', JSON.stringify(await ann.act({ type: 'endRound' })));
+  await until('round-end');
+  await wait(800);
   shot('7-round-end');
   await ann.act({ type: 'advance' });
-  await wait(800);
+  await until('board');
+  await wait(1000);
+  shot('7b-round2-board');
   await ann.act({ type: 'endRound' });
-  await wait(800);
+  await until('round-end');
   await ann.act({ type: 'advance' });
   await wait(1500);
   shot('8-final-or-gameover');
