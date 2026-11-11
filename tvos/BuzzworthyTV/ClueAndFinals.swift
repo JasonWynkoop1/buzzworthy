@@ -270,7 +270,7 @@ struct RevealCards: View {
     let f: FinalRound
 
     var body: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 400), spacing: 22)], spacing: 22) {
+        LazyVGrid(columns: Array(repeating: GridItem(.fixed(380), spacing: 22), count: max(1, min(f.reveals.count, 4))), spacing: 22) {
             ForEach(f.reveals) { r in
                 VStack(alignment: .leading, spacing: 8) {
                     Text(s.name(r.id)).font(Theme.body(28, .heavy))
