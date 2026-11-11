@@ -76,6 +76,11 @@ jobs:
         if: always()
         working-directory: tvos
         run: grep -i "buzzworthy" applog.txt | tail -40 || true
+      - name: Print small copies of the screenshots
+        if: always()
+        working-directory: tvos/shots
+        run: |
+          for f in *.png; do sips -Z 1280 -s format jpeg -s formatOptions 60 "$f" --out "/tmp/${f%.png}.jpg" >/dev/null; echo "SHOT_BEGIN $f"; base64 -i "/tmp/${f%.png}.jpg" | tr -d '\n'; echo; echo "SHOT_END"; done
       - uses: actions/upload-artifact@v4
         if: always()
         with:
