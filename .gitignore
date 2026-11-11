@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Xcode
+xcuserdata/
+DerivedData/
+tvos/ci/node_modules/
+tvos/ci/package*.json
