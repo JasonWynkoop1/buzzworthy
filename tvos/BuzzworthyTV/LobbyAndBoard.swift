@@ -228,6 +228,7 @@ struct TileStyle: ButtonStyle {
                 .foregroundColor(Theme.ink)
                 .background(
                     RoundedRectangle(cornerRadius: 16).fill(color)
+                        .shadow(color: .black.opacity(focused ? 0.55 : 0), radius: 18, y: 12)
                         .overlay(
                             RoundedRectangle(cornerRadius: 16)
                                 .fill(LinearGradient(colors: [.white.opacity(0.22), .clear, .black.opacity(0.14)], startPoint: .top, endPoint: .bottom))
@@ -235,7 +236,6 @@ struct TileStyle: ButtonStyle {
                 )
                 .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Color.white, lineWidth: focused ? 6 : 0))
                 .scaleEffect(configuration.isPressed ? 1.0 : (focused ? 1.1 : 1))
-                .shadow(color: .black.opacity(focused ? 0.55 : 0), radius: 18, y: 12)
                 .zIndex(focused ? 1 : 0)
                 .animation(.easeOut(duration: 0.12), value: focused)
         }

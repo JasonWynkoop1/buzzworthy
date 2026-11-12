@@ -156,9 +156,11 @@ struct TVButtonStyle: ButtonStyle {
         var body: some View {
             configuration.label
                 .foregroundColor(focused ? style.focusedText : style.text)
-                .background(RoundedRectangle(cornerRadius: style.corner).fill(focused ? style.focusedFill : style.fill))
+                .background(
+                    RoundedRectangle(cornerRadius: style.corner).fill(focused ? style.focusedFill : style.fill)
+                        .shadow(color: .black.opacity(focused ? 0.45 : 0), radius: 16, y: 10)
+                )
                 .scaleEffect(configuration.isPressed ? 0.96 : (focused ? 1.07 : 1))
-                .shadow(color: .black.opacity(focused ? 0.45 : 0), radius: 16, y: 10)
                 .animation(.easeOut(duration: 0.15), value: focused)
         }
     }
