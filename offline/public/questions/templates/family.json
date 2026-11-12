@@ -1,0 +1,41 @@
+{
+ "title": "Family Night",
+ "description": "Questions about your own family and friends",
+ "selected": false,
+ "_how_to_use": "Fill in your own clues, then move this file up one folder (into questions/) and restart the server. You need 12 categories with 5 clues each to play this pack by itself, or mix it with another pack. Clues go from easiest ($200) to hardest ($1000). 'alt' lists other answers you'll accept.",
+ "categories": [
+  {
+   "name": "Who Said It?",
+   "clues": [
+    { "q": "This family member always says 'Who left the lights on?'", "a": "Dad", "alt": ["father"] },
+    { "q": "Replace with a famous family saying", "a": "Answer" },
+    { "q": "Replace with a famous family saying", "a": "Answer" },
+    { "q": "Replace with a famous family saying", "a": "Answer" },
+    { "q": "Replace with a famous family saying", "a": "Answer" }
+   ]
+  },
+  {
+   "name": "Family Vacations",
+   "clues": [
+    { "q": "The state we drove to every summer", "a": "Answer" },
+    { "q": "The name of the campground where the tent flooded", "a": "Answer" },
+    { "q": "Replace with your own clue", "a": "Answer" },
+    { "q": "Replace with your own clue", "a": "Answer" },
+    { "q": "Replace with your own clue", "a": "Answer" }
+   ]
+  },
+  {
+   "name": "Pets We've Had",
+   "clues": [
+    { "q": "Our first dog's name", "a": "Answer" },
+    { "q": "Replace with your own clue", "a": "Answer" },
+    { "q": "Replace with your own clue", "a": "Answer" },
+    { "q": "Replace with your own clue", "a": "Answer" },
+    { "q": "Replace with your own clue", "a": "Answer" }
+   ]
+  }
+ ],
+ "finals": [
+  { "category": "Family History", "q": "The city where Grandma and Grandpa met", "a": "Answer" }
+ ]
+}

@@ -1,0 +1,49 @@
+:root {
+  --bg: #12082b;
+  --bg2: #2a0f5c;
+  --panel: rgba(255, 255, 255, 0.07);
+  --text: #f6f1ff;
+  --muted: #b9a8e0;
+  --hot: #ff5d8f;
+  --sun: #ffd166;
+  --cool: #4cc9f0;
+  --good: #06d6a0;
+  --bad: #ff5d5d;
+  --tile1: #3d1d8f;
+  --tile2: #251060;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  color: var(--text);
+  background: radial-gradient(ellipse at top, var(--bg2), var(--bg) 70%) fixed;
+  background-color: var(--bg);
+  -webkit-tap-highlight-color: transparent;
+}
+button {
+  font: inherit;
+  font-weight: 800;
+  border: 0;
+  border-radius: 14px;
+  padding: 14px 20px;
+  background: linear-gradient(90deg, var(--hot), #ff8e6b);
+  color: #fff;
+  cursor: pointer;
+}
+button.ghost { background: var(--panel); color: var(--text); border: 1px solid rgba(255,255,255,.15); font-weight: 600; }
+button:disabled { opacity: .4; }
+input {
+  font: inherit;
+  font-size: 20px;
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 2px solid rgba(255,255,255,.15);
+  background: rgba(0,0,0,.3);
+  color: var(--text);
+  outline: none;
+}
+input:focus { border-color: var(--sun); }
+/* TV: keep the sound toggle clear of the lobby pack buttons. */
+#soundbtn.soundbtn { left: auto; right: 1.5vw; }

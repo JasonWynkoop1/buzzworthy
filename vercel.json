@@ -1,0 +1,11 @@
+{
+  "framework": null,
+  "buildCommand": "",
+  "installCommand": "",
+  "outputDirectory": "web",
+  "cleanUrls": true,
+  "rewrites": [
+    { "source": "/tv", "destination": "/index.html" },
+    { "source": "/join", "destination": "/play.html" }
+  ]
+}

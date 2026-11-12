@@ -1,0 +1,96 @@
+name: Send Apple TV app to TestFlight
+
+on:
+  push:
+    branches: [main]
+    paths: ['tvos/BuzzworthyTV/**', 'tvos/BuzzworthyTV.xcodeproj/**', '.github/workflows/testflight.yml', 'tvos/ci/asc.py', 'tvos/refresh.txt']
+  workflow_dispatch:
+
+concurrency: testflight
+
+env:
+  BUNDLE_ID: com.buzzworthy.party.tv
+
+jobs:
+  upload:
+    runs-on: macos-26
+    steps:
+      - name: Use the newest Xcode (Apple requires the tvOS 26 SDK or later)
+        run: |
+          ls -d /Applications/Xcode*.app
+          X=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | grep -v -i beta | sort -V | tail -1)
+          [ -n "$X" ] && sudo xcode-select -s "$X"
+          xcodebuild -version
+      - name: Check the App Store Connect key is set up
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+        run: |
+          if [ -z "$ASC_KEY_ID" ]; then
+            echo "::warning::The App Store Connect key secrets are not added yet (ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8). Skipping the TestFlight upload."
+            echo "ready=false" >> $GITHUB_ENV
+          else
+            echo "ready=true" >> $GITHUB_ENV
+          fi
+      - uses: actions/checkout@v4
+        if: env.ready == 'true'
+      - name: Write the key file
+        if: env.ready == 'true'
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          mkdir -p ~/private_keys
+          # Rebuild the key file cleanly, whatever way it was pasted (Windows line endings,
+          # all on one line, with or without the BEGIN/END lines).
+          printf '%s' "$ASC_KEY_P8" | python3 -c '
+          import sys, re
+          raw = sys.stdin.read()
+          print("key text: %d chars, %d lines, has BEGIN line: %s" % (len(raw), raw.count("\n") + 1, "BEGIN" in raw), file=sys.stderr)
+          body = re.sub(r"-----(BEGIN|END)[A-Z ]*-----", "", raw)
+          body = re.sub(r"[^A-Za-z0-9+/=]", "", body)
+          print("key body: %d base64 chars" % len(body), file=sys.stderr)
+          lines = [body[i:i+64] for i in range(0, len(body), 64)]
+          print("-----BEGIN PRIVATE KEY-----\n" + "\n".join(lines) + "\n-----END PRIVATE KEY-----")
+          ' > ~/private_keys/AuthKey_$ASC_KEY_ID.p8
+          echo "ASC_KEY_PATH=$HOME/private_keys/AuthKey_$ASC_KEY_ID.p8" >> $GITHUB_ENV
+      - name: Prepare App Store Connect
+        if: env.ready == 'true'
+        id: asc
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          python3 -m pip install --quiet --break-system-packages pyjwt cryptography || python3 -m pip install --quiet pyjwt cryptography
+          python3 tvos/ci/asc.py prepare "$BUNDLE_ID" Buzzworthy
+      - name: Build, sign and upload to TestFlight
+        if: env.ready == 'true' && steps.asc.outputs.app_exists == 'true'
+        working-directory: tvos
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          TEAM_ID: ${{ steps.asc.outputs.team_id }}
+        run: |
+          set -o pipefail
+          BUILD="${{ github.run_number }}.${{ github.run_attempt }}"
+          AUTH="-allowProvisioningUpdates -authenticationKeyPath $ASC_KEY_PATH -authenticationKeyID $ASC_KEY_ID -authenticationKeyIssuerID $ASC_ISSUER_ID"
+          xcodebuild -project BuzzworthyTV.xcodeproj -scheme BuzzworthyTV -configuration Release \
+            -destination 'generic/platform=tvOS' -archivePath build/Buzzworthy.xcarchive \
+            DEVELOPMENT_TEAM=$TEAM_ID CODE_SIGN_STYLE=Automatic CURRENT_PROJECT_VERSION=$BUILD \
+            $AUTH archive | tail -n 40
+          cat > build/ExportOptions.plist <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>upload</string>
+            <key>teamID</key><string>$TEAM_ID</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>manageAppVersionAndBuildNumber</key><false/>
+          </dict></plist>
+          PLIST
+          xcodebuild -exportArchive -archivePath build/Buzzworthy.xcarchive \
+            -exportOptionsPlist build/ExportOptions.plist -exportPath build/export $AUTH | tail -n 40
+          echo "Uploaded build $BUILD. It shows up in TestFlight on the Apple TV after Apple finishes processing (usually 5 to 15 minutes)."
+      - name: Remove the key file
+        if: always()
+        run: rm -rf ~/private_keys
