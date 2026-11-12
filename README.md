@@ -1,36 +1,25 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Buzzworthy
 
-## Getting Started
+A party trivia game. The board runs on a TV and everyone buzzes in from their phone.
 
-First, run the development server:
+| Folder | What it is | How it ships |
+| --- | --- | --- |
+| `web/` | The website: TV page (`index.html`) and phone page (`play.html`). Live at https://buzzworthy-one.vercel.app | Vercel deploys `main` automatically (see `vercel.json`). Other branches get preview links. |
+| `tvos/` | Native Apple TV app. Runs the same game engine as the website. | GitHub Actions builds it, runs a simulator game, and uploads to TestFlight on pushes to `main`. |
+| `offline/` | Backup version that runs on a PC on home Wi-Fi with `node server.js` (or `Start Buzzworthy.bat`). | Copy the folder to the PC. |
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Questions
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- House packs are JSON files in `web/questions/` (listed in `index.json`). The Apple TV app downloads them from the website at the start of each room.
+- `web/archive.js` loads real TV quiz-show boards for each new room from a fan-made public clue archive (one random season per room) and splits them into topic packs. The clues are fetched at play time and are not stored in this repo.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Game engine
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+`web/engine/` (`game.js`, `rules.js`, `judge.js`) and `web/archive.js` are shared. The Apple TV app has copies in `tvos/BuzzworthyTV/Engine/`, so change both when you change one.
 
-## Learn More
+## Apple TV builds
 
-To learn more about Next.js, take a look at the following resources:
+- `.github/workflows/tvos.yml`: build check, phone protocol test, and a simulator game with screenshots (download them from the run's Artifacts). Use **Run workflow** to run it on demand.
+- `.github/workflows/testflight.yml`: signs and uploads to TestFlight. Needs the `ASC_KEY_ID`, `ASC_ISSUER_ID` and `ASC_KEY_P8` repo secrets. Bumping `tvos/refresh.txt` forces a new build (TestFlight builds expire after 90 days).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+See `tvos/README.md` for more.

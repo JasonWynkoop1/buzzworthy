@@ -1,0 +1,472 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#12082b">
+<title>Buzzworthy</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+<style>
+  html, body { height: 100%; }
+  body { display: flex; flex-direction: column; overscroll-behavior: none; user-select: none; -webkit-user-select: none; }
+  input { user-select: text; -webkit-user-select: text; }
+  .top { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 4px solid var(--c, var(--hot)); background: rgba(0,0,0,.2); }
+  .top .name { font-weight: 800; font-size: 18px; }
+  .top .name small { font-weight: 600; color: var(--muted); font-size: 12px; margin-left: 6px; }
+  .top .score { font-family: 'Bungee'; font-size: 22px; }
+  .top .score.neg { color: var(--bad); }
+  #app { flex: 1; display: flex; flex-direction: column; padding: 16px; gap: 14px; min-height: 0; }
+  .center { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; gap: 14px; }
+  .logo { font-family: 'Bungee'; font-size: 40px; line-height: 1; background: linear-gradient(120deg, var(--hot), var(--sun) 60%, var(--cool)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .msg { font-size: 20px; font-weight: 600; }
+  .muted { color: var(--muted); }
+  .err { color: var(--bad); min-height: 20px; }
+  .stack { display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 420px; }
+  .buzzer { width: min(78vw, 46vh); height: min(78vw, 46vh); border-radius: 50%; font-family: 'Bungee'; font-size: min(12vw, 7vh); color: #fff; touch-action: manipulation; transition: transform .06s, filter .2s, background .2s; border: 0; }
+  .buzzer.idle { background: radial-gradient(circle at 35% 30%, #5a4a7a, #2a2140); box-shadow: 0 10px 0 #18122a; color: var(--muted); }
+  .buzzer.live { background: radial-gradient(circle at 35% 30%, #ff8fb1, #e0245e 60%, #a1123d); box-shadow: 0 10px 0 #6d0b29, 0 0 40px rgba(255,93,143,.7); animation: glow .6s infinite alternate; }
+  .buzzer.live:active { transform: translateY(8px); box-shadow: 0 2px 0 #6d0b29; }
+  .buzzer.won { background: radial-gradient(circle at 35% 30%, #8ff5d2, #06d6a0 60%, #048a68); box-shadow: 0 10px 0 #035c45; }
+  .buzzer.locked { background: radial-gradient(circle at 35% 30%, #555, #2b2b2b); box-shadow: 0 10px 0 #111; color: #888; }
+  @keyframes glow { to { filter: brightness(1.15); } }
+  .clueq { font-size: 17px; line-height: 1.35; background: var(--panel); padding: 12px 14px; border-radius: 14px; }
+  .cat { font-family: 'Bungee'; color: var(--sun); font-size: 14px; }
+  .mini { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; flex: 1; grid-template-rows: auto repeat(5, 1fr); min-height: 0; }
+  .mini .h { font-size: 9px; font-weight: 800; text-transform: uppercase; text-align: center; line-height: 1.1; display: flex; align-items: center; justify-content: center; padding: 4px 2px; background: #2c1460; border-radius: 6px; overflow-wrap: anywhere; hyphens: auto; }
+  .mini button { padding: 0; font-family: 'Bungee'; font-size: 13px; color: var(--sun); background: linear-gradient(160deg, var(--tile1), var(--tile2)); border-radius: 8px; min-height: 44px; }
+  .mini button:disabled { background: rgba(255,255,255,.04); color: transparent; opacity: 1; }
+  .timer { height: 8px; border-radius: 8px; background: rgba(255,255,255,.1); overflow: hidden; width: 100%; }
+  .timer i { display: block; height: 100%; background: linear-gradient(90deg, var(--hot), var(--sun)); transform-origin: left; }
+  .captain { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; padding: 10px 16px 16px; border-top: 1px dashed rgba(255,255,255,.15); }
+  .captain:empty { display: none; }
+  .captain::before { content: 'Captain controls'; width: 100%; text-align: center; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; }
+  .captain button { padding: 10px 14px; font-size: 14px; }
+  .big { font-family: 'Bungee'; font-size: 34px; line-height: 1.1; }
+  .ok { color: var(--good); }
+  .no { color: var(--bad); }
+  .quick { display: flex; gap: 8px; }
+  .quick button { flex: 1; padding: 10px 0; font-size: 14px; }
+  .banner { position: fixed; top: 0; left: 0; right: 0; text-align: center; background: var(--bad); padding: 6px; font-weight: 600; display: none; z-index: 9; }
+</style>
+</head>
+<body>
+<div class="banner" id="conn">Reconnecting...</div>
+<div class="top" id="top" style="display:none"></div>
+<div id="app"></div>
+<div class="captain" id="captain"></div>
+
+<script src="/config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="/cloud.js"></script>
+<script src="/common.js"></script>
+<script>
+const params = new URLSearchParams(location.search);
+let room = (params.get('room') || localStorage.getItem('bw-room') || '').toUpperCase();
+let pid = null, S = null, screenKey = '', flash = '';
+
+function store(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+function load(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+function act(type, extra) { return BW.post('/api/act', { room, pid, type, ...extra }); }
+function pname(id) { const p = S && S.players.find((x) => x.id === id); return p ? BW.esc(p.name) : 'Someone'; }
+const app = document.getElementById('app');
+
+function showJoin(error) {
+  screenKey = 'join';
+  document.getElementById('top').style.display = 'none';
+  app.innerHTML = `
+    <div class="center">
+      <div class="logo">BUZZ<br>WORTHY</div>
+      <div class="stack">
+        <input id="room" placeholder="Room code" maxlength="4" autocapitalize="characters" value="${BW.esc(room)}" style="text-transform:uppercase;text-align:center;letter-spacing:.3em;font-family:Bungee">
+        <input id="name" placeholder="Your name" maxlength="16" value="${BW.esc(load('bw-name') || '')}">
+        <button id="joinbtn">Join as a player</button>
+        <button id="hostbtn" class="ghost">Join as the host</button>
+        <div class="muted" style="font-size:13px;text-align:center">The host reads the clues, sees the answers, and decides who's right. Players then answer out loud.</div>
+        <div class="err">${BW.esc(error || '')}</div>
+      </div>
+    </div>`;
+  const go = async (asHost) => {
+    const r = document.getElementById('room').value.trim().toUpperCase();
+    const n = document.getElementById('name').value.trim();
+    if (!r || !n) return showJoin('Enter the room code and your name.');
+    const savedPid = load('bw-pid-' + r);
+    const res = await BW.post('/api/join', { room: r, name: n, pid: savedPid, host: !!asHost });
+    if (res.error) return showJoin(res.error);
+    room = r; pid = res.pid;
+    store('bw-room', r); store('bw-name', n); store('bw-pid-' + r, pid); store('bw-host-' + r, asHost ? '1' : '');
+    history.replaceState(null, '', '/play?room=' + r);
+    start();
+  };
+  document.getElementById('joinbtn').onclick = () => go(false);
+  document.getElementById('hostbtn').onclick = () => go(true);
+  document.getElementById('name').onkeydown = (e) => { if (e.key === 'Enter') go(false); };
+}
+
+let stop = null;
+function start() {
+  stop && stop();
+  stop = BW.connect({ room, pid }, onState, (ok) => {
+    document.getElementById('conn').style.display = ok ? 'none' : 'block';
+  });
+}
+
+function onState(s) {
+  const old = S;
+  S = s;
+  if (!S.me) { stop && stop(); store('bw-pid-' + room, ''); return showJoin(s.gone ? 'That game has ended. Enter the code on the TV to join a new one.' : 'You were removed from the game. Join again?'); }
+  if (old && old.phase !== s.phase) flash = '';
+  // Buzz feedback
+  if (old && s.clue && s.clue.buzzedId === pid && s.phase === 'answering' && old.phase !== 'answering') navigator.vibrate && navigator.vibrate(120);
+  render();
+}
+
+function renderTop() {
+  if (S.me.isHost) {
+    const t = document.getElementById('top');
+    t.style.display = 'flex';
+    t.style.setProperty('--c', 'var(--sun)');
+    t.innerHTML = `<div class="name">${BW.esc(S.me.name)}<small>🎤 host · Room ${S.code}</small></div><div class="score" style="font-size:14px">${S.round ? (S.round === 3 ? 'FINAL' : 'ROUND ' + S.round) : ''}</div>`;
+    return;
+  }
+  const me = S.players.find((p) => p.id === pid);
+  const t = document.getElementById('top');
+  t.style.display = 'flex';
+  t.style.setProperty('--c', me ? me.color : '');
+  t.innerHTML = `<div class="name">${me ? BW.esc(me.name) : ''}<small>${S.me.isCaptain ? '★ captain' : ''} · Room ${S.code}</small></div>
+    <div class="score ${S.me.score < 0 ? 'neg' : ''}">${BW.money(S.me.score)}</div>`;
+}
+
+function renderCaptain() {
+  const c = document.getElementById('captain');
+  if (!S.me.isCaptain) { c.innerHTML = ''; return; }
+  const ph = S.phase, b = [];
+  if (ph === 'lobby') b.push(['start', 'Start game']);
+  if (['reading', 'open', 'answering', 'dd-wager', 'dd-answer'].includes(ph)) b.push(['skip', 'Skip clue']);
+  if (S.lastResult && ['reveal', 'open', 'board'].includes(ph)) b.push(['override', 'Flip last ruling']);
+  if (['reveal', 'round-end', 'final-wager', 'final-answer', 'final-reveal'].includes(ph)) b.push(['advance', 'Continue']);
+  if (ph === 'board') b.push(['endRound', 'End round early']);
+  if (ph === 'gameover') b.push(['playAgain', 'Play again']);
+  c.innerHTML = b.map(([t, l]) => `<button class="${t === 'start' || t === 'advance' || t === 'playAgain' ? '' : 'ghost'}" data-act="${t}">${l}</button>`).join('');
+}
+
+document.addEventListener('click', (e) => {
+  const a = e.target.closest('[data-act]');
+  if (a) {
+    if (a.dataset.act === 'endRound' && !confirm('End this round now?')) return;
+    act(a.dataset.act, a.dataset.pack ? { pack: a.dataset.pack } : a.dataset.pid ? { targetPid: a.dataset.pid } : {}).then((r) => { if (r && r.error && r.error !== 'captain only') alert(r.error); });
+  }
+  const t = e.target.closest('[data-pick]');
+  if (t) { const [ci, ri] = t.dataset.pick.split(','); act('pick', { ci, ri }); }
+});
+
+// Rebuild a screen only when it changes, so typing is not interrupted.
+function setScreen(key, html, after) {
+  if (key === screenKey) return false;
+  screenKey = key;
+  app.innerHTML = html;
+  after && after();
+  return true;
+}
+
+function answerForm(key, type, placeholder, extraHtml = '') {
+  setScreen(key, `
+    <div class="stack" style="margin:0 auto">
+      ${extraHtml}
+      <input id="ans" placeholder="${placeholder}" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="send">
+      <button id="send">Lock it in</button>
+      <div class="timer"><i data-timer-bar data-total="${S.duration}"></i></div>
+      <div class="muted" style="text-align:center">No need to phrase it as a question. Small typos are OK.</div>
+    </div>`, () => {
+      const input = document.getElementById('ans');
+      setTimeout(() => input.focus(), 50);
+      const send = () => { act(type, { text: input.value }); input.blur(); };
+      document.getElementById('send').onclick = send;
+      input.onkeydown = (e) => { if (e.key === 'Enter') send(); };
+    });
+}
+
+function wagerForm(key, type, min, max, extraHtml = '') {
+  setScreen(key, `
+    <div class="stack" style="margin:auto">
+      ${extraHtml}
+      <div class="msg">Wager between ${BW.money(min)} and ${BW.money(max)}</div>
+      <input id="wager" type="number" inputmode="numeric" min="${min}" max="${max}" placeholder="Amount" style="text-align:center;font-family:Bungee;font-size:28px">
+      <div class="quick">
+        <button class="ghost" data-w="${min}">Min</button>
+        <button class="ghost" data-w="${Math.round(max / 2)}">Half</button>
+        <button class="ghost" data-w="${max}">All in</button>
+      </div>
+      <button id="wbtn">Place wager</button>
+      <div class="err" id="werr"></div>
+    </div>`, () => {
+      const input = document.getElementById('wager');
+      app.querySelectorAll('[data-w]').forEach((b) => (b.onclick = () => { input.value = b.dataset.w; }));
+      document.getElementById('wbtn').onclick = () => {
+        const v = Number(input.value);
+        if (!Number.isFinite(v) || input.value === '' || v < min || v > max) {
+          document.getElementById('werr').textContent = `Pick a number from ${min} to ${max}.`;
+          return;
+        }
+        act(type, { amount: v });
+      };
+    });
+}
+
+function render() {
+  if (S.me.isHost) { renderTop(); renderCaptain(); return renderHost(); }
+  renderTop();
+  renderCaptain();
+  const s = S, ph = s.phase, c = s.clue;
+  const meCtrl = s.controllerId === pid;
+
+  if (ph === 'lobby') {
+    const packKey = s.packs.map((pk) => (pk.selected ? 1 : 0)).join('');
+    const packHtml = s.me.isCaptain ? `<div class="stack" style="margin-top:8px">
+        <div class="muted">Question packs (${s.categoryCount} categories${s.categoryCount < 12 ? ', need 12+' : ''})</div>
+        ${s.packs.map((pk) => `<button class="${pk.selected ? '' : 'ghost'}" data-act="togglePack" data-pack="${BW.esc(pk.id)}" style="text-align:left">${pk.selected ? '&#10003; ' : ''}${BW.esc(pk.title)} <small style="opacity:.7">${pk.count} categories</small></button>`).join('')}
+      </div>` : `<div class="muted">Packs: ${s.packs.filter((pk) => pk.selected).map((pk) => BW.esc(pk.title)).join(', ')}</div>`;
+    return setScreen('lobby-' + s.players.length + s.me.isCaptain + packKey, `<div class="center" style="overflow:auto">
+      <div class="logo">YOU'RE IN!</div>
+      <div class="msg">${s.players.length} player${s.players.length === 1 ? '' : 's'} in the room</div>
+      <div class="muted">${s.me.isCaptain ? 'You are the captain. Choose question packs, then tap Start game when everyone has joined.' : 'Waiting for the captain to start the game...'}</div>
+      ${packHtml}
+    </div>`);
+  }
+
+  if (ph === 'board') {
+    const controllerOffline = !s.players.find((p) => p.id === s.controllerId)?.connected;
+    const canPick = meCtrl || (s.me.isCaptain && controllerOffline);
+    if (canPick) {
+      const key = 'board-' + s.round + '-' + s.board.map((cc) => cc.clues.map((x) => (x.used ? 1 : 0)).join('')).join('');
+      return setScreen(key, `
+        <div class="msg" style="text-align:center">Your pick!</div>
+        <div class="mini">
+          ${s.board.map((cc) => `<div class="h">${BW.esc(cc.name)}</div>`).join('')}
+          ${[0, 1, 2, 3, 4].map((ri) => s.board.map((cc, ci) => `<button data-pick="${ci},${ri}" ${cc.clues[ri].used ? 'disabled' : ''}>${cc.clues[ri].value}</button>`).join('')).join('')}
+        </div>`);
+    }
+    return setScreen('board-wait-' + s.controllerId, `<div class="center">
+      <div class="msg"><b>${pname(s.controllerId)}</b> is picking a clue...</div>
+      <div class="muted">Get your thumb ready.</div></div>`);
+  }
+
+  if (['reading', 'open', 'answering'].includes(ph)) {
+    const clueHtml = `<div class="cat">${BW.esc(c.cat)} · $${c.value}</div><div class="clueq">${BW.esc(c.q)}</div>`;
+    if (ph === 'answering' && c.buzzedId === pid) {
+      if (s.hostMode) return setScreen('say-' + c.ci + c.ri + s.round + '-' + c.tried.length, `${clueHtml}<div class="center">
+        <div class="big ok">YOU'RE UP!</div>
+        <div class="msg">Say your answer out loud.</div>
+        <div class="muted">${BW.esc(s.hostName || 'The host')} will decide if you're right.</div></div>`);
+      return answerForm('ans-' + c.ci + c.ri + s.round + '-' + c.tried.length, 'answer', 'Your answer', `<div class="big ok" style="text-align:center">You got it!</div>${clueHtml}`);
+    }
+    let cls = 'idle', label = 'WAIT', sub = 'Buzzers unlock after the clue is read. Buzzing early locks you out briefly.';
+    if (ph === 'open') { cls = 'live'; label = 'BUZZ!'; sub = 'Go go go!'; }
+    if (c.tried.includes(pid)) { cls = 'locked'; label = 'OUT'; sub = 'You already took a shot at this one.'; }
+    if (ph === 'answering') { cls = 'locked'; label = '...'; sub = `<b>${pname(c.buzzedId)}</b> is answering.`; }
+    if (flash) sub = flash;
+    const key = `buzz-${c.ci}${c.ri}-${ph}-${cls}-${c.tried.length}-${flash}`;
+    return setScreen(key, `${clueHtml}<div class="center">
+      <button class="buzzer ${cls}" id="buzz">${label}</button>
+      <div class="muted">${sub}</div></div>`, () => {
+      const b = document.getElementById('buzz');
+      b.addEventListener('pointerdown', async (e) => {
+        e.preventDefault();
+        if (S.phase !== 'reading' && S.phase !== 'open') return;
+        const r = await act('buzz');
+        if (r.result === 'early') { flash = 'Too early! Wait for the red button.'; screenKey = ''; render(); setTimeout(() => { flash = ''; screenKey = ''; render(); }, 900); }
+      });
+    });
+  }
+
+  if (ph === 'dd-wager') {
+    if (meCtrl) return wagerForm('dd-' + c.ci + c.ri, 'ddWager', 5, s.me.maxDD, `<div class="big" style="text-align:center;color:var(--sun)">DAILY DOUBLE!</div><div class="cat" style="text-align:center">${BW.esc(c.cat)}</div>`);
+    return setScreen('ddw-' + c.ci + c.ri, `<div class="center"><div class="big" style="color:var(--sun)">DAILY DOUBLE!</div><div class="msg">${pname(s.controllerId)} is wagering...</div></div>`);
+  }
+
+  if (ph === 'dd-answer') {
+    const clueHtml = `<div class="cat">${BW.esc(c.cat)} · Wager ${BW.money(c.wager)}</div><div class="clueq">${BW.esc(c.q)}</div>`;
+    if (meCtrl && s.hostMode) return setScreen('ddsay-' + c.ci + c.ri, `${clueHtml}<div class="center">
+        <div class="msg">Say your answer out loud.</div>
+        <div class="muted">${BW.esc(s.hostName || 'The host')} will decide if you're right.</div></div>`);
+    if (meCtrl) return answerForm('dda-' + c.ci + c.ri, 'answer', 'Your answer', clueHtml);
+    return setScreen('ddaw-' + c.ci + c.ri, `${clueHtml}<div class="center"><div class="msg">${pname(s.controllerId)} is answering...</div></div>`);
+  }
+
+  if (ph === 'reveal') {
+    const r = s.lastResult;
+    const mine = r && r.pid === pid;
+    return setScreen(`reveal-${c.ci}${c.ri}-${r ? r.correct : ''}`, `<div class="center">
+      <div class="muted">The answer was</div>
+      <div class="big" style="color:var(--sun)">${BW.esc(c.answer)}</div>
+      ${mine ? `<div class="big ${r.correct ? 'ok' : 'no'}">${r.correct ? '+' : '-'}${BW.money(r.delta)}</div>` : ''}
+    </div>`);
+  }
+
+  if (ph === 'round-end') {
+    return setScreen('re-' + s.round, `<div class="center"><div class="logo">ROUND ${s.round} DONE</div>
+      <div class="msg">You have ${BW.money(s.me.score)}</div>
+      <div class="muted">${s.round === 1 ? 'Round 2 doubles every value.' : 'The Final Showdown is next.'}</div></div>`);
+  }
+
+  if (ph === 'final-wager') {
+    const f = s.final;
+    if (!f.eligible.includes(pid)) return setScreen('fw-out', `<div class="center"><div class="msg">You need a positive score to play the Final Showdown.</div><div class="muted">Sit back and cheer!</div></div>`);
+    if (s.me.finalWager !== undefined) return setScreen('fw-done', `<div class="center"><div class="msg">Wager locked: ${BW.money(s.me.finalWager)}</div><div class="muted">Waiting for everyone else...</div></div>`);
+    return wagerForm('fw', 'finalWager', 0, s.me.score, `<div class="big" style="text-align:center;color:var(--sun)">FINAL SHOWDOWN</div><div class="cat" style="text-align:center;font-size:18px">${BW.esc(f.category)}</div>`);
+  }
+
+  if (ph === 'final-answer') {
+    const f = s.final;
+    if (!f.eligible.includes(pid)) return setScreen('fa-out', `<div class="center"><div class="clueq">${BW.esc(f.q)}</div><div class="muted">Play along in your head!</div></div>`);
+    if (s.me.finalAnswer !== undefined) return setScreen('fa-done', `<div class="center"><div class="msg">Locked in: "${BW.esc(s.me.finalAnswer)}"</div><div class="muted">Waiting for the reveal...</div></div>`);
+    return answerForm('fa', 'finalAnswer', 'Your final answer', `<div class="cat">${BW.esc(f.category)} · You wagered ${BW.money(s.me.finalWager)}</div><div class="clueq">${BW.esc(f.q)}</div>`);
+  }
+
+  if (ph === 'final-reveal') {
+    const r = s.final.reveals.find((x) => x.id === pid);
+    return setScreen('fr-' + (r ? r.correct : 'wait'), `<div class="center">
+      ${r ? `<div class="muted">The answer was</div><div class="big" style="color:var(--sun)">${BW.esc(s.final.answer)}</div>
+             <div class="big ${r.correct ? 'ok' : 'no'}">${r.correct ? 'Correct!' : 'Not quite'}</div>`
+          : '<div class="msg">Watch the TV for the big reveal...</div>'}</div>`);
+  }
+
+  if (ph === 'gameover') {
+    const sorted = s.players.slice().sort((a, b) => b.score - a.score);
+    const place = sorted.findIndex((p) => p.id === pid) + 1;
+    return setScreen('go-' + place + s.me.score, `<div class="center">
+      <div class="logo">${place === 1 ? 'YOU WIN!' : 'GAME OVER'}</div>
+      <div class="msg">You finished #${place} with ${BW.money(s.me.score)}</div></div>`);
+  }
+}
+
+// ---------- host screens ----------
+function renderHost() {
+  const s = S, ph = s.phase, c = s.clue, sec = s.secret || {};
+  const ansBox = (a, alt) => `<div style="background:rgba(255,209,102,.12);border:2px solid var(--sun);border-radius:14px;padding:10px 14px">
+      <div class="muted" style="font-size:12px;text-transform:uppercase;letter-spacing:.1em">Answer (only you can see this)</div>
+      <div style="font-family:Bungee;font-size:24px;color:var(--sun)">${BW.esc(a || '')}</div>
+      ${alt && alt.length ? `<div class="muted" style="font-size:13px">Also accept: ${alt.map(BW.esc).join(', ')}</div>` : ''}</div>`;
+  const clueBlock = () => `<div class="cat">${BW.esc(c.cat)} · ${c.dd ? 'Daily Double' + (c.wager ? ' · wager ' + BW.money(c.wager) : '') : '$' + c.value}</div>
+      <div class="clueq" style="font-size:20px">${BW.esc(sec.q || c.q || '')}</div>${ansBox(sec.answer, sec.alt)}`;
+  const judgeBtns = `<div style="display:flex;gap:10px">
+      <button data-judge="1" style="flex:1;padding:22px 0;font-size:22px;background:var(--good);color:#06241b">&#10003; Correct</button>
+      <button data-judge="0" style="flex:1;padding:22px 0;font-size:22px;background:var(--bad)">&#10007; Wrong</button></div>`;
+
+  if (ph === 'lobby') {
+    const packKey = s.packs.map((pk) => (pk.selected ? 1 : 0)).join('');
+    return setScreen('h-lobby-' + s.players.length + packKey, `<div class="center" style="overflow:auto">
+      <div class="logo">YOU'RE THE HOST</div>
+      <div class="msg">${s.players.length} player${s.players.length === 1 ? '' : 's'} joined</div>
+      <div class="muted">You'll read each clue out loud, open the buzzers, and judge spoken answers. Tap Start game when everyone is in.</div>
+      <div class="stack" style="margin-top:8px">
+        <div class="muted">Question packs (${s.categoryCount} categories${s.categoryCount < 12 ? ', need 12+' : ''})</div>
+        ${s.packs.map((pk) => `<button class="${pk.selected ? '' : 'ghost'}" data-act="togglePack" data-pack="${BW.esc(pk.id)}" style="text-align:left">${pk.selected ? '&#10003; ' : ''}${BW.esc(pk.title)} <small style="opacity:.7">${pk.count} categories</small></button>`).join('')}
+      </div></div>`);
+  }
+  if (ph === 'board') {
+    const key = 'h-board-' + s.round + s.controllerId + s.board.map((cc) => cc.clues.map((x) => (x.used ? 1 : 0)).join('')).join('');
+    return setScreen(key, `
+      <div class="msg" style="text-align:center"><b>${pname(s.controllerId)}</b> picks a clue.</div>
+      <div class="muted" style="text-align:center;font-size:13px">They pick on their phone, or tell you and you tap it here.</div>
+      <div class="mini">
+        ${s.board.map((cc) => `<div class="h">${BW.esc(cc.name)}</div>`).join('')}
+        ${[0, 1, 2, 3, 4].map((ri) => s.board.map((cc, ci) => `<button data-pick="${ci},${ri}" ${cc.clues[ri].used ? 'disabled' : ''}>${cc.clues[ri].value}</button>`).join('')).join('')}
+      </div>`);
+  }
+  if (ph === 'reading') {
+    return setScreen('h-read-' + c.ci + c.ri, `${clueBlock()}
+      <div class="center">
+        <div class="muted">Read the clue out loud, then open the buzzers.</div>
+        <button data-act="openNow" style="width:100%;padding:24px 0;font-size:22px">Open buzzers</button>
+      </div>`);
+  }
+  if (ph === 'open') {
+    const r = s.lastResult;
+    return setScreen('h-open-' + c.ci + c.ri + '-' + c.tried.length, `${clueBlock()}
+      <div class="center">
+        <div class="big" style="color:var(--good)">BUZZERS OPEN</div>
+        ${r && !r.correct ? `<div class="muted">${pname(r.pid)} missed. Others can buzz in.</div>` : '<div class="muted">Waiting for someone to buzz in...</div>'}
+        <div class="timer"><i data-timer-bar data-total="${s.duration}"></i></div>
+      </div>`);
+  }
+  if (ph === 'answering' || ph === 'dd-answer') {
+    const who = ph === 'answering' ? c.buzzedId : s.controllerId;
+    return setScreen('h-judge-' + ph + c.ci + c.ri + who + c.tried.length, `${clueBlock()}
+      <div class="center" style="gap:10px">
+        <div class="msg"><b>${pname(who)}</b> is answering.</div>
+        <div class="muted">Listen, then tap one:</div>
+        <div style="width:100%">${judgeBtns}</div>
+      </div>`);
+  }
+  if (ph === 'dd-wager') {
+    return setScreen('h-ddw-' + c.ci + c.ri, `<div class="center">
+      <div class="big" style="color:var(--sun)">DAILY DOUBLE!</div>
+      <div class="msg">${pname(s.controllerId)} is choosing a wager on their phone.</div>
+      <div class="clueq">${BW.esc(sec.q || '')}</div>${ansBox(sec.answer, sec.alt)}
+      <div class="muted">Don't read the clue until they lock in a wager.</div></div>`);
+  }
+  if (ph === 'reveal') {
+    const r = s.lastResult;
+    return setScreen('h-rev-' + c.ci + c.ri + (r ? r.correct + '' + r.overridden : ''), `<div class="center">
+      <div class="muted">The answer was</div>
+      <div class="big" style="color:var(--sun)">${BW.esc(c.answer || sec.answer)}</div>
+      ${r ? `<div class="msg">${pname(r.pid)} ${r.correct ? 'got it! &#10003;' : 'missed it. &#10007;'}</div>` : '<div class="msg">Nobody got it.</div>'}
+      <div class="muted">Back to the board in a moment. Use Continue below to skip ahead.</div></div>`);
+  }
+  if (ph === 'round-end') {
+    return setScreen('h-re-' + s.round, `<div class="center"><div class="logo">ROUND ${s.round} DONE</div>
+      ${s.players.slice().sort((a, b) => b.score - a.score).map((p) => `<div class="msg">${BW.esc(p.name)}: ${BW.money(p.score)}</div>`).join('')}
+      <div class="muted">Tap Continue when you're ready.</div></div>`);
+  }
+  if (ph === 'final-wager') {
+    const f = s.final;
+    return setScreen('h-fw-' + f.wagered.length, `<div class="center">
+      <div class="big" style="color:var(--sun)">FINAL SHOWDOWN</div>
+      <div class="msg">Category: ${BW.esc(f.category)}</div>
+      <div class="muted">Players are wagering on their phones. Answers in this round are typed.</div>
+      <div class="msg">${f.eligible.map((id) => `${pname(id)} ${f.wagered.includes(id) ? '&#10003;' : '...'}`).join('<br>')}</div>
+      ${ansBox(sec.finalAnswer)}</div>`);
+  }
+  if (ph === 'final-answer') {
+    const f = s.final, got = sec.finalAnswers || {};
+    return setScreen('h-fa-' + f.answered.length, `<div class="center">
+      <div class="clueq" style="font-size:20px">${BW.esc(f.q)}</div>${ansBox(sec.finalAnswer)}
+      <div class="msg">${f.eligible.map((id) => `${pname(id)}: ${id in got ? '&#128274; ' + BW.esc(got[id] || '(blank)') : '...'}`).join('<br>')}</div>
+      <div class="timer"><i data-timer-bar data-total="${s.duration}"></i></div></div>`);
+  }
+  if (ph === 'final-reveal' || ph === 'gameover') {
+    const f = s.final;
+    const rows = f ? f.reveals.map((r) => `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;background:var(--panel);padding:10px 12px;border-radius:12px">
+        <div><b>${pname(r.id)}</b>: "${BW.esc(r.answer)}" <span class="${r.correct ? 'ok' : 'no'}">${r.correct ? '&#10003;' : '&#10007;'}</span></div>
+        <button class="ghost" style="padding:6px 10px;font-size:13px" data-act="finalOverride" data-pid="${r.id}">Flip</button></div>`).join('') : '';
+    const key = 'h-fr-' + ph + (f ? f.reveals.map((r) => r.correct).join('') : '');
+    return setScreen(key, `<div class="center" style="gap:10px">
+      ${ph === 'gameover' ? '<div class="logo">GAME OVER</div>' : '<div class="msg">Revealing answers...</div>'}
+      ${f ? `<div class="muted">Correct answer: <b>${BW.esc(f.answer || sec.finalAnswer)}</b></div>` : ''}
+      <div class="stack">${rows}</div>
+      <div class="muted">Typed answers are checked automatically. Tap Flip if one was judged wrong.</div></div>`);
+  }
+}
+
+app.addEventListener('click', (e) => {
+  const j = e.target.closest('[data-judge]');
+  if (j) act('judge', { correct: j.dataset.judge === '1' });
+});
+
+BW.startTimerLoop(() => S);
+
+(async () => {
+  const savedPid = room && load('bw-pid-' + room);
+  const name = load('bw-name');
+  if (room && savedPid && name) {
+    const res = await BW.post('/api/join', { room, name, pid: savedPid, host: load('bw-host-' + room) === '1' });
+    if (!res.error) { pid = res.pid; return start(); }
+    if (/not found/i.test(res.error)) room = '';
+  }
+  showJoin();
+})();
+</script>
+</body>
+</html>

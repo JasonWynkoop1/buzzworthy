@@ -1,0 +1,9 @@
+{
+  "name": "buzzworthy",
+  "version": "1.0.0",
+  "description": "Party trivia board game for your TV, with phones as buzzers.",
+  "main": "server.js",
+  "scripts": { "start": "node server.js" },
+  "engines": { "node": ">=18" },
+  "license": "MIT"
+}

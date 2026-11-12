@@ -2,7 +2,7 @@ name: Send Apple TV app to TestFlight
 
 on:
   push:
-    branches: [apple-tv-app]
+    branches: [main]
     paths: ['tvos/BuzzworthyTV/**', 'tvos/BuzzworthyTV.xcodeproj/**', '.github/workflows/testflight.yml', 'tvos/ci/asc.py', 'tvos/refresh.txt']
   workflow_dispatch:
 

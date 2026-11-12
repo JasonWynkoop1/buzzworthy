@@ -1,0 +1,1 @@
+window.BW_CONFIG = { mode: 'cloud', supabaseUrl: 'https://uhpphvfudghdngrbctsz.supabase.co', supabaseKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVocHBodmZ1ZGdoZG5ncmJjdHN6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM1OTYzNjEsImV4cCI6MjEwOTE3MjM2MX0.NUvI6uYz3H_0BMkwnrMwazYjvJp3g-y1LPlRvBmRdtw' };
