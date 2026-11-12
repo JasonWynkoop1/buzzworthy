@@ -41,6 +41,8 @@ async function phone(name) {
   const ann = await phone('Ann');
   const bob = await phone('Bob');
   const cat = await phone('Cat');
+  await phone('Devon');
+  await phone('Priya');
   await wait(1500);
   shot('1-lobby');
   console.log('start', JSON.stringify(await ann.act({ type: 'start' })));

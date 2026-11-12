@@ -23,7 +23,7 @@ jobs:
         run: |
           APP=$(find ~/Library/Developer/Xcode/DerivedData -name BuzzworthyTV.app -path '*Release-appletvos*' | head -1)
           ls "$APP"
-          for f in shim.js judge.js game.js rules.js hub.js default.json general.json Bungee-Regular.ttf Assets.car; do test -e "$APP/$f" || { echo "missing $f"; exit 1; }; done
+          for f in shim.js judge.js game.js rules.js hub.js default.json general.json Unbounded-Black.ttf Outfit-Regular.ttf Assets.car; do test -e "$APP/$f" || { echo "missing $f"; exit 1; }; done
 
   protocol:
     runs-on: ubuntu-latest

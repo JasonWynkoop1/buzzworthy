@@ -3,37 +3,55 @@ import UIKit
 import CoreText
 import CoreImage.CIFilterBuiltins
 
+// Look: a night-time game stage. Ink background, six bright color blocks
+// (one per board column), chunky wide display type for names and money,
+// a friendly geometric face for clues and labels.
 enum Theme {
-    static let bg = Color(hex: "#12082b")
-    static let bg2 = Color(hex: "#2a0f5c")
-    static let panel = Color.white.opacity(0.07)
-    static let text = Color(hex: "#f6f1ff")
-    static let muted = Color(hex: "#b9a8e0")
-    static let hot = Color(hex: "#ff5d8f")
-    static let sun = Color(hex: "#ffd166")
-    static let cool = Color(hex: "#4cc9f0")
-    static let good = Color(hex: "#06d6a0")
-    static let bad = Color(hex: "#ff5d5d")
-    static let tile1 = Color(hex: "#3d1d8f")
-    static let tile2 = Color(hex: "#251060")
-    static let dark = Color(hex: "#1a1033")
+    static let ink = Color(hex: "#0E0F1A")
+    static let stage = Color(hex: "#151729")
+    static let surface = Color(hex: "#1C1F36")
+    static let surface2 = Color(hex: "#272B4A")
+    static let line = Color.white.opacity(0.10)
+    static let text = Color(hex: "#F6F4EE")
+    static let muted = Color(hex: "#9FA3C2")
+    static let yellow = Color(hex: "#FFD23F")
+    static let coral = Color(hex: "#FF5A5F")
+    static let mint = Color(hex: "#3DDC97")
+    static let good = mint
+    static let bad = coral
 
-    static let brand = LinearGradient(colors: [hot, sun, cool], startPoint: .leading, endPoint: .trailing)
+    /// One color per board column.
+    static let columns: [Color] = ["#FF5A5F", "#FF9F1C", "#FFD23F", "#3DDC97", "#3ABEFF", "#B388FF"].map { Color(hex: $0) }
+    static func column(_ i: Int) -> Color { columns[((i % columns.count) + columns.count) % columns.count] }
 
-    /// Loads the bundled Bungee font file once.
-    private static let fontLoaded: Bool = {
-        guard let url = Bundle.main.url(forResource: "Bungee-Regular", withExtension: "ttf") else { return false }
-        CTFontManagerRegisterFontsForURL(url as CFURL, .process, nil)
-        return UIFont(name: "Bungee-Regular", size: 20) != nil
+    private static let fontsLoaded: Bool = {
+        for name in ["Unbounded-Black", "Unbounded-Bold", "Outfit-Regular", "Outfit-SemiBold", "Outfit-ExtraBold"] {
+            if let url = Bundle.main.url(forResource: name, withExtension: "ttf") {
+                CTFontManagerRegisterFontsForURL(url as CFURL, .process, nil)
+            }
+        }
+        return UIFont(name: "Unbounded-Black", size: 20) != nil && UIFont(name: "Outfit-Regular", size: 20) != nil
     }()
 
-    /// The chunky display font (Bungee), with a bold rounded fallback.
+    /// Chunky display type: names, money, big titles.
     static func display(_ size: CGFloat) -> Font {
-        if fontLoaded { return .custom("Bungee-Regular", size: size) }
-        return .system(size: size, weight: .black, design: .rounded)
+        fontsLoaded ? .custom("Unbounded-Black", fixedSize: size) : .system(size: size, weight: .black, design: .rounded)
     }
+    static func title(_ size: CGFloat) -> Font {
+        fontsLoaded ? .custom("Unbounded-Bold", fixedSize: size) : .system(size: size, weight: .bold, design: .rounded)
+    }
+    /// Clues, labels and everything else.
     static func body(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
-        .system(size: size, weight: weight)
+        guard fontsLoaded else { return .system(size: size, weight: weight) }
+        let name: String
+        if weight == .regular || weight == .light || weight == .thin || weight == .ultraLight {
+            name = "Outfit-Regular"
+        } else if weight == .medium || weight == .semibold {
+            name = "Outfit-SemiBold"
+        } else {
+            name = "Outfit-ExtraBold"
+        }
+        return .custom(name, fixedSize: size)
     }
 }
 
@@ -47,43 +65,100 @@ extension Color {
     }
 }
 
-/// Gradient-filled text, like the logo and big titles on the web page.
-struct GradientText: View {
-    let text: String
-    let size: CGFloat
-    var gradient: LinearGradient = Theme.brand
-
+/// The stage behind every screen: ink, two soft colored lights, a faint dot grid.
+struct StageBackground: View {
     var body: some View {
-        Text(text)
-            .font(Theme.display(size))
-            .multilineTextAlignment(.center)
-            .foregroundStyle(gradient)
+        ZStack {
+            Theme.ink
+            RadialGradient(colors: [Theme.column(5).opacity(0.22), .clear], center: UnitPoint(x: 0.05, y: 0), startRadius: 0, endRadius: 900)
+            RadialGradient(colors: [Theme.column(4).opacity(0.16), .clear], center: UnitPoint(x: 1, y: 1), startRadius: 0, endRadius: 900)
+            Canvas { ctx, size in
+                let step: CGFloat = 44
+                var y: CGFloat = step / 2
+                while y < size.height {
+                    var x: CGFloat = step / 2
+                    while x < size.width {
+                        ctx.fill(Path(ellipseIn: CGRect(x: x - 1.5, y: y - 1.5, width: 3, height: 3)), with: .color(.white.opacity(0.05)))
+                        x += step
+                    }
+                    y += step
+                }
+            }
+        }
+        .ignoresSafeArea()
     }
 }
 
-/// A button look that works with the Siri Remote: it grows and glows when focused.
+/// Small all-caps label.
+struct Eyebrow: View {
+    let text: String
+    var color: Color = Theme.muted
+    var size: CGFloat = 22
+    var body: some View {
+        Text(text.uppercased())
+            .font(Theme.body(size, .heavy))
+            .kerning(size * 0.14)
+            .foregroundColor(color)
+    }
+}
+
+/// A player's colored circle with their first letter.
+struct Avatar: View {
+    let name: String
+    let color: Color
+    var size: CGFloat = 48
+    var body: some View {
+        Circle()
+            .fill(color)
+            .frame(width: size, height: size)
+            .overlay(
+                Text(String(name.trimmingCharacters(in: .whitespaces).prefix(1)).uppercased())
+                    .font(Theme.display(size * 0.44))
+                    .foregroundColor(Theme.ink)
+            )
+    }
+}
+
+/// The room code as four color blocks.
+struct CodeTiles: View {
+    let code: String
+    var size: CGFloat = 96
+    var body: some View {
+        HStack(spacing: size * 0.12) {
+            ForEach(Array(code.enumerated()), id: \.offset) { i, ch in
+                Text(String(ch))
+                    .font(Theme.display(size * 0.56))
+                    .foregroundColor(Theme.ink)
+                    .frame(width: size, height: size)
+                    .background(RoundedRectangle(cornerRadius: size * 0.2).fill(Theme.column([0, 2, 3, 4][i % 4])))
+            }
+        }
+    }
+}
+
+/// A button look that works with the Siri Remote: it grows and brightens when focused.
 struct TVButtonStyle: ButtonStyle {
-    var fill: Color = Theme.panel
-    var focusedFill: Color = Theme.hot
-    var corner: CGFloat = 16
+    var fill: Color = Theme.surface2
+    var text: Color = Theme.text
+    var focusedFill: Color = Theme.text
+    var focusedText: Color = Theme.ink
+    var corner: CGFloat = 18
 
     func makeBody(configuration: Configuration) -> some View {
-        Inner(configuration: configuration, fill: fill, focusedFill: focusedFill, corner: corner)
+        Inner(configuration: configuration, style: self)
     }
 
     private struct Inner: View {
         let configuration: ButtonStyle.Configuration
-        let fill: Color
-        let focusedFill: Color
-        let corner: CGFloat
+        let style: TVButtonStyle
         @Environment(\.isFocused) private var focused
 
         var body: some View {
             configuration.label
-                .background(RoundedRectangle(cornerRadius: corner).fill(focused ? focusedFill : fill))
-                .overlay(RoundedRectangle(cornerRadius: corner).stroke(Color.white.opacity(focused ? 0.9 : 0.15), lineWidth: focused ? 4 : 1))
-                .scaleEffect(configuration.isPressed ? 0.96 : (focused ? 1.06 : 1))
-                .shadow(color: focused ? focusedFill.opacity(0.6) : .clear, radius: 18)
+                .foregroundColor(focused ? style.focusedText : style.text)
+                .background(RoundedRectangle(cornerRadius: style.corner).fill(focused ? style.focusedFill : style.fill))
+                .scaleEffect(configuration.isPressed ? 0.96 : (focused ? 1.07 : 1))
+                .shadow(color: .black.opacity(focused ? 0.45 : 0), radius: 16, y: 10)
                 .animation(.easeOut(duration: 0.15), value: focused)
         }
     }

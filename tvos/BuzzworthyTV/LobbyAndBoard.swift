@@ -8,69 +8,83 @@ struct LobbyView: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: 70) {
-            VStack(alignment: .leading, spacing: 22) {
-                Text("BUZZ\nWORTHY")
-                    .font(Theme.display(118))
-                    .lineSpacing(-20)
-                    .foregroundStyle(LinearGradient(colors: [Theme.hot, Theme.sun, Theme.cool], startPoint: .topLeading, endPoint: .bottomTrailing))
+            VStack(alignment: .leading, spacing: 26) {
+                Wordmark(size: 124, stacked: true)
                 Text("The trivia showdown where your phone is the buzzer.")
                     .font(Theme.body(30)).foregroundColor(Theme.muted)
-                VStack(alignment: .leading, spacing: 8) {
-                    step("1.", "Scan the code with your phone camera")
-                    step("2.", "Type your name and join")
-                    if s.hostMode {
-                        step("3.", "Host: \(s.hostName). Players answer out loud.")
-                    } else {
-                        step("3.", "Want a host? They tap Join as the host. Otherwise players type answers.")
-                    }
-                }
-                Roster(s: s)
+                Seats(s: s)
                 PackPicker(s: s)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            VStack(spacing: 14) {
+            VStack(spacing: 22) {
+                Eyebrow(text: "Scan to join", color: Theme.text)
                 if let img = QRCode.image(for: host.joinURL) {
                     Image(uiImage: img)
                         .interpolation(.none)
                         .resizable()
-                        .frame(width: 360, height: 360)
-                        .padding(22)
-                        .background(RoundedRectangle(cornerRadius: 22).fill(Color.white))
+                        .frame(width: 330, height: 330)
+                        .padding(20)
+                        .background(RoundedRectangle(cornerRadius: 26).fill(Color.white))
                 }
-                Text(s.code)
-                    .font(Theme.display(96))
-                    .kerning(20)
-                    .foregroundColor(Theme.sun)
-                Text(host.joinURL).font(Theme.body(22)).foregroundColor(Theme.muted)
+                VStack(spacing: 12) {
+                    Eyebrow(text: "or enter the room code at", size: 16)
+                    Text("\(Config.joinSite)/play").font(Theme.body(26, .semibold))
+                    CodeTiles(code: s.code, size: 92)
+                }
             }
-            .padding(40)
-            .background(RoundedRectangle(cornerRadius: 32).fill(Theme.panel))
+            .padding(.horizontal, 48).padding(.vertical, 40)
+            .background(RoundedRectangle(cornerRadius: 40).fill(Theme.surface))
+            .overlay(RoundedRectangle(cornerRadius: 40).stroke(Theme.line, lineWidth: 1))
         }
-    }
-
-    private func step(_ n: String, _ text: String) -> some View {
-        (Text(n + " ").foregroundColor(Theme.sun).bold() + Text(text))
-            .font(Theme.body(28))
     }
 }
 
-struct Roster: View {
+/// Eight seats that fill up as players join.
+struct Seats: View {
     let s: TVState
 
     var body: some View {
-        if s.players.isEmpty {
-            Text("Waiting for players...").font(Theme.body(30)).foregroundColor(Theme.muted)
-        } else {
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 200), spacing: 12, alignment: .leading)], alignment: .leading, spacing: 12) {
-                ForEach(s.players) { p in
-                    Text(p.name + (p.id == s.captainId ? " \u{2605}" : ""))
-                        .font(Theme.body(26, .heavy))
-                        .foregroundColor(Color(hex: "#160b2e"))
-                        .lineLimit(1)
-                        .padding(.horizontal, 22).padding(.vertical, 8)
-                        .background(Capsule().fill(Color(hex: p.color)))
-                        .transition(.scale)
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 14) {
+                Eyebrow(text: "Players \(s.players.count) of 8")
+                if s.hostMode {
+                    HStack(spacing: 8) {
+                        Image(systemName: "mic.fill")
+                        Text("Host: \(s.hostName). Answer out loud.")
+                    }
+                    .font(Theme.body(20, .semibold))
+                    .foregroundColor(Theme.ink)
+                    .padding(.horizontal, 14).padding(.vertical, 5)
+                    .background(Capsule().fill(Theme.yellow))
+                } else {
+                    Text("Want a host to read the clues? They tap Join as the host.")
+                        .font(Theme.body(20)).foregroundColor(Theme.muted)
+                }
+            }
+            LazyVGrid(columns: Array(repeating: GridItem(.fixed(232), spacing: 14), count: 4), alignment: .leading, spacing: 14) {
+                ForEach(0..<8, id: \.self) { i in
+                    if i < s.players.count {
+                        let p = s.players[i]
+                        HStack(spacing: 12) {
+                            Avatar(name: p.name, color: Color(hex: p.color), size: 50)
+                            Text(p.name).font(Theme.body(24, .heavy)).lineLimit(1).minimumScaleFactor(0.7)
+                            Spacer(minLength: 0)
+                            if p.id == s.captainId && !s.hostMode {
+                                Image(systemName: "star.fill").font(.system(size: 18)).foregroundColor(Theme.yellow)
+                            }
+                        }
+                        .padding(.horizontal, 14)
+                        .frame(width: 232, height: 76)
+                        .background(RoundedRectangle(cornerRadius: 20).fill(Theme.surface2))
+                        .opacity(p.connected ? 1 : 0.5)
+                        .transition(.scale.combined(with: .opacity))
+                    } else {
+                        RoundedRectangle(cornerRadius: 20)
+                            .strokeBorder(Theme.line, style: StrokeStyle(lineWidth: 2, dash: [8, 8]))
+                            .frame(width: 232, height: 76)
+                            .overlay(Text(i == s.players.count ? "Waiting..." : "").font(Theme.body(20)).foregroundColor(Theme.muted))
+                    }
                 }
             }
         }
@@ -82,30 +96,31 @@ struct PackPicker: View {
     let s: TVState
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 6) {
-                Text("Question packs (select to switch on or off), \(s.categoryCount ?? 0) categories")
-                    .foregroundColor(Theme.muted)
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 14) {
+                Eyebrow(text: "Question packs")
+                Text("\(s.categoryCount ?? 0) categories switched on")
+                    .font(Theme.body(20)).foregroundColor(Theme.muted)
                 if (s.categoryCount ?? 0) < 12 {
-                    Text("need at least 12").foregroundColor(Theme.bad)
+                    Text("Need at least 12").font(Theme.body(20, .semibold)).foregroundColor(Theme.bad)
                 }
             }
-            .font(Theme.body(22))
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 250), spacing: 14, alignment: .leading)], alignment: .leading, spacing: 14) {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 230), spacing: 14, alignment: .leading)], alignment: .leading, spacing: 14) {
                 ForEach(s.packs ?? []) { pk in
                     Button {
                         host.act(["type": "togglePack", "pack": pk.id])
                     } label: {
-                        HStack(spacing: 8) {
-                            Text((pk.selected ? "\u{2713} " : "") + pk.title)
-                            Text("\(pk.count)").opacity(0.7)
+                        HStack(spacing: 10) {
+                            Image(systemName: pk.selected ? "checkmark.circle.fill" : "circle")
+                                .font(.system(size: 22))
+                            Text(pk.title).font(Theme.body(22, pk.selected ? .heavy : .semibold)).lineLimit(1)
+                            Text("\(pk.count)").font(Theme.body(20)).opacity(0.6)
                         }
-                        .font(Theme.body(22, pk.selected ? .heavy : .semibold))
-                        .foregroundColor(pk.selected ? Color(hex: "#10082a") : Theme.muted)
-                        .padding(.horizontal, 18).padding(.vertical, 10)
+                        .padding(.horizontal, 18).padding(.vertical, 11)
                     }
-                    .buttonStyle(TVButtonStyle(fill: pk.selected ? Theme.cool : Theme.panel,
-                                               focusedFill: pk.selected ? Theme.sun : Theme.hot.opacity(0.7)))
+                    .buttonStyle(TVButtonStyle(fill: pk.selected ? Theme.mint : Theme.surface,
+                                               text: pk.selected ? Theme.ink : Theme.muted,
+                                               corner: 30))
                 }
             }
         }
@@ -119,29 +134,35 @@ struct BoardView: View {
     let s: TVState
 
     var body: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 14) {
             if let board = s.board {
                 GeometryReader { geo in
-                    let gap: CGFloat = 9
-                    let w = (geo.size.width - gap * 5) / 6
-                    let h = (geo.size.height - gap * 5) / 6.25
+                    let gap: CGFloat = 10
+                    let n = CGFloat(max(1, board.count))
+                    let w = (geo.size.width - gap * (n - 1)) / n
+                    let h = (geo.size.height - gap * 5) / 6.1
                     VStack(spacing: gap) {
                         HStack(spacing: gap) {
                             ForEach(board.indices, id: \.self) { ci in
                                 Text(board[ci].name.uppercased())
-                                    .font(Theme.display(24))
+                                    .font(Theme.body(26, .heavy))
+                                    .kerning(1)
                                     .multilineTextAlignment(.center)
-                                    .minimumScaleFactor(0.5)
-                                    .padding(8)
-                                    .frame(width: w, height: h * 1.25)
-                                    .background(RoundedRectangle(cornerRadius: 10).fill(
-                                        LinearGradient(colors: [Color(hex: "#3a1c71"), Color(hex: "#24124a")], startPoint: .topLeading, endPoint: .bottomTrailing)))
+                                    .lineLimit(2)
+                                    .minimumScaleFactor(0.6)
+                                    .padding(.horizontal, 12)
+                                    .frame(width: w, height: h * 1.1)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 16).fill(Theme.surface)
+                                            .overlay(alignment: .bottom) { Rectangle().fill(Theme.column(ci)).frame(height: 7) }
+                                            .clipShape(RoundedRectangle(cornerRadius: 16))
+                                    )
                             }
                         }
                         ForEach(0..<5, id: \.self) { ri in
                             HStack(spacing: gap) {
                                 ForEach(board.indices, id: \.self) { ci in
-                                    TileView(tile: board[ci].clues[ri], width: w, height: h) {
+                                    TileView(tile: board[ci].clues[ri], color: Theme.column(ci), width: w, height: h) {
                                         host.act(["type": "pick", "ci": ci, "ri": ri])
                                     }
                                 }
@@ -150,56 +171,69 @@ struct BoardView: View {
                     }
                 }
             }
-            (Text(s.name(s.controllerId)).bold().foregroundColor(Theme.text)
-             + Text(", pick a clue on your phone (or pick one here with the remote). Round \(s.round) of 2."))
-                .font(Theme.body(26))
-                .foregroundColor(Theme.muted)
+            HStack(spacing: 12) {
+                if let p = s.player(s.controllerId) {
+                    Avatar(name: p.name, color: Color(hex: p.color), size: 36)
+                    Text("\(p.name), it's your pick.").font(Theme.body(26, .heavy))
+                }
+                Text("Choose on your phone, or here with the remote.")
+                    .font(Theme.body(24)).foregroundColor(Theme.muted)
+            }
         }
     }
 }
 
 struct TileView: View {
     let tile: Tile
+    let color: Color
     let width: CGFloat
     let height: CGFloat
     let pick: () -> Void
 
     var body: some View {
         if tile.used {
-            RoundedRectangle(cornerRadius: 10).fill(Color.white.opacity(0.04))
+            RoundedRectangle(cornerRadius: 16)
+                .strokeBorder(Theme.line, lineWidth: 2)
                 .frame(width: width, height: height)
         } else {
             Button(action: pick) {
-                Text("$\(tile.value)")
-                    .font(Theme.display(50))
+                Text(money(tile.value))
+                    .font(Theme.display(42))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+                    .padding(.horizontal, 10)
                     .frame(width: width, height: height)
             }
-            .buttonStyle(TileStyle())
+            .buttonStyle(TileStyle(color: color))
         }
     }
 }
 
 struct TileStyle: ButtonStyle {
+    let color: Color
+
     func makeBody(configuration: Configuration) -> some View {
-        Inner(configuration: configuration)
+        Inner(configuration: configuration, color: color)
     }
 
     private struct Inner: View {
         let configuration: ButtonStyle.Configuration
+        let color: Color
         @Environment(\.isFocused) private var focused
 
         var body: some View {
             configuration.label
-                .foregroundColor(focused ? Theme.dark : Theme.sun)
-                .shadow(color: .black.opacity(focused ? 0 : 0.35), radius: 0, x: 0, y: 4)
+                .foregroundColor(Theme.ink)
                 .background(
-                    RoundedRectangle(cornerRadius: 10).fill(
-                        focused
-                        ? LinearGradient(colors: [Theme.sun, Color(hex: "#ffb703")], startPoint: .topLeading, endPoint: .bottomTrailing)
-                        : LinearGradient(colors: [Theme.tile1, Theme.tile2], startPoint: .topLeading, endPoint: .bottomTrailing))
+                    RoundedRectangle(cornerRadius: 16).fill(color)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(LinearGradient(colors: [.white.opacity(0.22), .clear, .black.opacity(0.14)], startPoint: .top, endPoint: .bottom))
+                        )
                 )
-                .scaleEffect(focused ? 1.08 : 1)
-                .shadow(color: focused ? Theme.sun.opacity(0.6) : .clear, radius: 20)
+                .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Color.white, lineWidth: focused ? 6 : 0))
+                .scaleEffect(configuration.isPressed ? 1.0 : (focused ? 1.1 : 1))
+                .shadow(color: .black.opacity(focused ? 0.55 : 0), radius: 18, y: 12)
                 .zIndex(focused ? 1 : 0)
                 .animation(.easeOut(duration: 0.12), value: focused)
         }
