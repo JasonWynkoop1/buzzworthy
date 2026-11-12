@@ -34,7 +34,18 @@ jobs:
           ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
         run: |
           mkdir -p ~/private_keys
-          printf '%s\n' "$ASC_KEY_P8" > ~/private_keys/AuthKey_$ASC_KEY_ID.p8
+          # Rebuild the key file cleanly, whatever way it was pasted (Windows line endings,
+          # all on one line, with or without the BEGIN/END lines).
+          printf '%s' "$ASC_KEY_P8" | python3 -c '
+          import sys, re
+          raw = sys.stdin.read()
+          print("key text: %d chars, %d lines, has BEGIN line: %s" % (len(raw), raw.count("\n") + 1, "BEGIN" in raw), file=sys.stderr)
+          body = re.sub(r"-----(BEGIN|END)[A-Z ]*-----", "", raw)
+          body = re.sub(r"[^A-Za-z0-9+/=]", "", body)
+          print("key body: %d base64 chars" % len(body), file=sys.stderr)
+          lines = [body[i:i+64] for i in range(0, len(body), 64)]
+          print("-----BEGIN PRIVATE KEY-----\n" + "\n".join(lines) + "\n-----END PRIVATE KEY-----")
+          ' > ~/private_keys/AuthKey_$ASC_KEY_ID.p8
           echo "ASC_KEY_PATH=$HOME/private_keys/AuthKey_$ASC_KEY_ID.p8" >> $GITHUB_ENV
       - name: Prepare App Store Connect
         if: env.ready == 'true'
