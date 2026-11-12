@@ -13,8 +13,14 @@ env:
 
 jobs:
   upload:
-    runs-on: macos-15
+    runs-on: macos-26
     steps:
+      - name: Use the newest Xcode (Apple requires the tvOS 26 SDK or later)
+        run: |
+          ls -d /Applications/Xcode*.app
+          X=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | grep -v -i beta | sort -V | tail -1)
+          [ -n "$X" ] && sudo xcode-select -s "$X"
+          xcodebuild -version
       - name: Check the App Store Connect key is set up
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
