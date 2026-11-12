@@ -66,6 +66,7 @@ jobs:
           for i in $(seq 1 60); do grep -q BUZZWORTHY_ROOM applog.txt && break; sleep 1; done
           cat applog.txt | tail -20
           CODE=$(grep -o 'BUZZWORTHY_ROOM [A-Z]*' applog.txt | head -1 | awk '{print $2}')
+          grep -o 'BUZZWORTHY_SOUND[A-Z_]* [a-z0-9]*' applog.txt || true
           echo "ROOM=$CODE" >> $GITHUB_ENV
           sleep 4
       - name: Play part of a game from fake phones
