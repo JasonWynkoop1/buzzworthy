@@ -5,6 +5,9 @@ on:
     branches: [main]
     paths: ['tvos/BuzzworthyTV/**', 'tvos/BuzzworthyTV.xcodeproj/**', '.github/workflows/testflight.yml', 'tvos/ci/asc.py', 'tvos/refresh.txt']
   workflow_dispatch:
+  # TestFlight builds expire after 90 days, so upload a fresh one every two months.
+  schedule:
+    - cron: '17 19 1 */2 *'
 
 concurrency: testflight
 
