@@ -41,14 +41,14 @@ async function phone(name) {
   const ann = await phone('Ann');
   const bob = await phone('Bob');
   const cat = await phone('Cat');
-  await phone('Devon');
-  await phone('Priya');
+  const dev = await phone('Devon');
+  const pri = await phone('Priya');
   await wait(1500);
   shot('1-lobby');
   console.log('start', JSON.stringify(await ann.act({ type: 'start' })));
   await wait(1500);
   shot('2-board');
-  const ctrl = [ann, bob, cat].find((p) => p.pid === ann.state.controllerId);
+  const ctrl = [ann, bob, cat, dev, pri].find((p) => p.pid === ann.state.controllerId);
   const board = ann.state.board;
   // Pick a clue that is not a daily double if we can tell; the TV hides that, so just pick the top-left.
   console.log('pick', JSON.stringify(await ctrl.act({ type: 'pick', ci: 0, ri: 0 })));
@@ -95,10 +95,10 @@ async function phone(name) {
   shot('8-final-or-gameover');
   const st = ann.state;
   if (st.phase === 'final-wager') {
-    for (const p of [ann, bob, cat]) if (st.final.eligible.includes(p.pid)) await p.act({ type: 'finalWager', amount: 100 });
+    for (const p of [ann, bob, cat, dev, pri]) if (st.final.eligible.includes(p.pid)) await p.act({ type: 'finalWager', amount: 100 });
     await wait(1500);
     shot('9-final-answer');
-    for (const p of [ann, bob, cat]) if (st.final.eligible.includes(p.pid)) await p.act({ type: 'finalAnswer', text: 'a guess' });
+    for (const p of [ann, bob, cat, dev, pri]) if (st.final.eligible.includes(p.pid)) await p.act({ type: 'finalAnswer', text: 'a guess' });
     await wait(3500);
     shot('10-final-reveal');
     for (let i = 0; i < 6 && ann.state.phase !== 'gameover'; i++) { await ann.act({ type: 'advance' }); await wait(700); }

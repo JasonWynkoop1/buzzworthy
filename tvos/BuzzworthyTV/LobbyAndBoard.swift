@@ -105,7 +105,7 @@ struct PackPicker: View {
                     Text("Need at least 12").font(Theme.body(20, .semibold)).foregroundColor(Theme.bad)
                 }
             }
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 230), spacing: 14, alignment: .leading)], alignment: .leading, spacing: 14) {
+            LazyVGrid(columns: Array(repeating: GridItem(.fixed(314), spacing: 14), count: 3), alignment: .leading, spacing: 14) {
                 ForEach(s.packs ?? []) { pk in
                     Button {
                         host.act(["type": "togglePack", "pack": pk.id])
@@ -113,10 +113,12 @@ struct PackPicker: View {
                         HStack(spacing: 10) {
                             Image(systemName: pk.selected ? "checkmark.circle.fill" : "circle")
                                 .font(.system(size: 22))
-                            Text(pk.title).font(Theme.body(22, pk.selected ? .heavy : .semibold)).lineLimit(1)
+                            Text(pk.title).font(Theme.body(22, pk.selected ? .heavy : .semibold)).lineLimit(1).minimumScaleFactor(0.7)
+                            Spacer(minLength: 4)
                             Text("\(pk.count)").font(Theme.body(20)).opacity(0.6)
                         }
                         .padding(.horizontal, 18).padding(.vertical, 11)
+                        .frame(width: 314)
                     }
                     .buttonStyle(TVButtonStyle(fill: pk.selected ? Theme.mint : Theme.surface,
                                                text: pk.selected ? Theme.ink : Theme.muted,
