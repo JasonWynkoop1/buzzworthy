@@ -57,7 +57,8 @@ jobs:
           xcrun simctl list runtimes
           DEV=$(xcrun simctl list devices available | grep -m1 'Apple TV 4K' | sed -E 's/.*\(([0-9A-F-]{36})\).*/\1/')
           if [ -z "$DEV" ]; then RT=$(xcrun simctl list runtimes | grep -m1 tvOS | sed -E 's/.* - (com\.apple[^ ]+).*/\1/'); DEV=$(xcrun simctl create bwtv "com.apple.CoreSimulator.SimDeviceType.Apple-TV-4K-3rd-generation-4K" "$RT"); fi
-          xcrun simctl boot "$DEV"
+          echo "SIM_UDID=$DEV" >> $GITHUB_ENV
+          xcrun simctl boot "$DEV" || true
           xcrun simctl bootstatus "$DEV" -b
           xcrun simctl install booted build/Build/Products/Debug-appletvsimulator/BuzzworthyTV.app
           xcrun simctl launch --console booted com.buzzworthy.party.tv > applog.txt 2>&1 &

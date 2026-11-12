@@ -265,7 +265,7 @@ struct Standings: View {
     var body: some View {
         let sorted = s.players.sorted { $0.score > $1.score }
         let top = max(1, sorted.first?.score ?? 1)
-        let two = sorted.count > 4
+        let two = sorted.count > 5
         LazyVGrid(columns: Array(repeating: GridItem(.fixed(two ? 760 : 900), spacing: 16), count: two ? 2 : 1), spacing: 12) {
             ForEach(Array(sorted.enumerated()), id: \.element.id) { i, p in
                 let c = Color(hex: p.color)

@@ -11,7 +11,7 @@ const KEY = cfg.match(/supabaseKey = "([^"]+)"/)[1];
 const [code, out] = process.argv.slice(2);
 fs.mkdirSync(out, { recursive: true });
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-const shot = (name) => { execSync(`xcrun simctl io booted screenshot "${path.join(out, name + '.png')}"`); console.log('shot', name); };
+const shot = (name) => { execSync(`xcrun simctl io ${process.env.SIM_UDID || 'booted'} screenshot "${path.join(out, name + '.png')}"`); console.log('shot', name); };
 const hex = () => [...Array(16)].map(() => '0123456789abcdef'[Math.floor(Math.random() * 16)]).join('');
 
 async function phone(name) {
