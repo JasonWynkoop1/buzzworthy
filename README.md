@@ -20,6 +20,6 @@ A party trivia game. The board runs on a TV and everyone buzzes in from their ph
 ## Apple TV builds
 
 - `.github/workflows/tvos.yml`: build check, phone protocol test, and a simulator game with screenshots (download them from the run's Artifacts). Use **Run workflow** to run it on demand.
-- `.github/workflows/testflight.yml`: signs and uploads to TestFlight. Needs the `ASC_KEY_ID`, `ASC_ISSUER_ID` and `ASC_KEY_P8` repo secrets. Bumping `tvos/refresh.txt` forces a new build (TestFlight builds expire after 90 days).
+- `.github/workflows/testflight.yml`: signs and uploads to TestFlight. Needs the `ASC_KEY_ID`, `ASC_ISSUER_ID` and `ASC_KEY_P8` repo secrets. It also runs by itself every two months so the TestFlight build never expires (they last 90 days). Bumping `tvos/refresh.txt` or using **Run workflow** forces a new build any time.
 
 See `tvos/README.md` for more.
