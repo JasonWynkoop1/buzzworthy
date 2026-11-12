@@ -60,6 +60,7 @@ jobs:
           echo "SIM_UDID=$DEV" >> $GITHUB_ENV
           xcrun simctl boot "$DEV" || true
           xcrun simctl bootstatus "$DEV" -b
+          sleep 75   # let the simulator finish its first-boot setup screen before we take pictures
           xcrun simctl install booted build/Build/Products/Debug-appletvsimulator/BuzzworthyTV.app
           xcrun simctl launch --console booted com.buzzworthy.party.tv > applog.txt 2>&1 &
           for i in $(seq 1 60); do grep -q BUZZWORTHY_ROOM applog.txt && break; sleep 1; done
