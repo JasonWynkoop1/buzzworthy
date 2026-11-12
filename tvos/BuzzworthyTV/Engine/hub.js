@@ -58,11 +58,25 @@ var Hub = (function () {
     return out;
   }
 
-  function create(packsJSON) {
+  // archiveTSV/season: one season of the real-show clue archive (see archive.js).
+  // When it parses, its topic packs come first and are switched on, and the
+  // house packs start switched off, the same as the website.
+  function create(packsJSON, archiveTSV, season) {
     var raw = JSON.parse(packsJSON);
     var packs = raw
       .map(function (p) { return BWRules.normalizePack(p.id, p.data); })
       .filter(function (p) { return p && p.categories.length; });
+    if (archiveTSV && typeof BWArchive !== 'undefined') {
+      try {
+        var arc = BWArchive.parse(String(archiveTSV), Number(season) || 0)
+          .map(function (p) { return BWRules.normalizePack(p.id, p); })
+          .filter(function (p) { return p.categories.length; });
+        if (arc.length) {
+          packs.forEach(function (p) { p.selected = false; });
+          packs = arc.concat(packs);
+        }
+      } catch (e) { __native.log('archive skipped: ' + e); }
+    }
     if (game) game.clearTimer();
     if (pending) clearTimeout(pending);
     pending = null;

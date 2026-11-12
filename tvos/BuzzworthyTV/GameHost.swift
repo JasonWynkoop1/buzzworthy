@@ -42,15 +42,15 @@ final class GameHost: ObservableObject {
     func newRoom() {
         roomRequest += 1
         let request = roomRequest
-        PackLoader.load { [weak self] packs in
+        PackLoader.load { [weak self] packs, archive in
             guard let self = self, request == self.roomRequest else { return }
-            self.createRoom(packs ?? self.packsJSON())
+            self.createRoom(packs ?? self.packsJSON(), archive: archive)
         }
     }
 
-    private func createRoom(_ packs: String) {
+    private func createRoom(_ packs: String, archive: PackLoader.ArchiveSeason?) {
         realtime.leaveAll()
-        let code = call("create", packs) ?? ""
+        let code = call("create", packs, archive?.tsv ?? "", archive?.season ?? 0) ?? ""
         roomCode = code
         if !code.isEmpty { realtime.join("bw:\(code)") }
         NSLog("BUZZWORTHY_ROOM %@", code)
@@ -98,7 +98,7 @@ final class GameHost: ObservableObject {
         native.setObject(unsafeBitCast(log, to: AnyObject.self), forKeyedSubscript: "log" as NSString)
         ctx.setObject(native, forKeyedSubscript: "__native" as NSString)
 
-        for file in ["shim", "judge", "game", "rules", "hub"] {
+        for file in ["shim", "judge", "game", "rules", "archive", "hub"] {
             guard let url = Bundle.main.url(forResource: file, withExtension: "js"),
                   let source = try? String(contentsOf: url, encoding: .utf8) else {
                 problem = "Missing game file \(file).js. Rebuild the app in Xcode."

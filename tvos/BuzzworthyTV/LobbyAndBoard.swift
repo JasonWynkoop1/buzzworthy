@@ -105,20 +105,25 @@ struct PackPicker: View {
                     Text("Need at least 12").font(Theme.body(20, .semibold)).foregroundColor(Theme.bad)
                 }
             }
-            LazyVGrid(columns: Array(repeating: GridItem(.fixed(314), spacing: 14), count: 3), alignment: .leading, spacing: 14) {
+            // With the archive topics there are about 15 buttons, so use four narrower columns
+            // (same total width as the seats above) to keep everything on screen.
+            let many = (s.packs?.count ?? 0) > 9
+            let cols = many ? 4 : 3
+            let w: CGFloat = many ? 232 : 314
+            LazyVGrid(columns: Array(repeating: GridItem(.fixed(w), spacing: 14), count: cols), alignment: .leading, spacing: many ? 10 : 14) {
                 ForEach(s.packs ?? []) { pk in
                     Button {
                         host.act(["type": "togglePack", "pack": pk.id])
                     } label: {
                         HStack(spacing: 10) {
                             Image(systemName: pk.selected ? "checkmark.circle.fill" : "circle")
-                                .font(.system(size: 22))
-                            Text(pk.title).font(Theme.body(22, pk.selected ? .heavy : .semibold)).lineLimit(1).minimumScaleFactor(0.7)
+                                .font(.system(size: many ? 19 : 22))
+                            Text(pk.title).font(Theme.body(many ? 19 : 22, pk.selected ? .heavy : .semibold)).lineLimit(1).minimumScaleFactor(0.6)
                             Spacer(minLength: 4)
-                            Text("\(pk.count)").font(Theme.body(20)).opacity(0.6)
+                            Text("\(pk.count)").font(Theme.body(many ? 17 : 20)).opacity(0.6)
                         }
-                        .padding(.horizontal, 18).padding(.vertical, 11)
-                        .frame(width: 314)
+                        .padding(.horizontal, many ? 14 : 18).padding(.vertical, many ? 9 : 11)
+                        .frame(width: w)
                     }
                     .buttonStyle(TVButtonStyle(fill: pk.selected ? Theme.mint : Theme.surface,
                                                text: pk.selected ? Theme.ink : Theme.muted,
