@@ -76,7 +76,24 @@ jobs:
       - name: App log
         if: always()
         working-directory: tvos
-        run: grep -i "buzzworthy" applog.txt | tail -40 || true
+        run: |
+          grep -i "buzzworthy" applog.txt | tail -40 || true
+          echo "--- crash reports"
+          ls -la ~/Library/Logs/DiagnosticReports/ 2>/dev/null || true
+          for f in ~/Library/Logs/DiagnosticReports/*.ips; do [ -e "$f" ] || continue; echo "=== $f"; python3 - "$f" <<'PY' || head -c 4000 "$f"
+          import sys, json
+          raw = open(sys.argv[1]).read()
+          head, _, body = raw.partition("\n")
+          print(head[:400])
+          d = json.loads(body)
+          print("exception:", json.dumps(d.get("exception")), "termination:", json.dumps(d.get("termination"))[:600])
+          print("asi:", json.dumps(d.get("asi"))[:1500])
+          t = [x for x in d.get("threads", []) if x.get("triggered")]
+          imgs = d.get("usedImages", [])
+          for fr in (t[0]["frames"] if t else [])[:40]:
+              print("  ", imgs[fr["imageIndex"]].get("name"), fr.get("symbol"))
+          PY
+          done
       - name: Print small copies of the screenshots
         if: always()
         working-directory: tvos/shots
