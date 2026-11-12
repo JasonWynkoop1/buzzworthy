@@ -16,6 +16,7 @@ final class SoundPlayer {
     var enabled = true
     private let engine = AVAudioEngine()
     private let player = AVAudioPlayerNode()
+    private let music = AVAudioPlayerNode()
     private let format = AVAudioFormat(standardFormatWithSampleRate: 44100, channels: 1)!
     private var cache: [String: AVAudioPCMBuffer] = [:]
 
@@ -24,7 +25,14 @@ final class SoundPlayer {
         try? AVAudioSession.sharedInstance().setActive(true)
         engine.attach(player)
         engine.connect(player, to: engine.mainMixerNode, format: format)
+        engine.attach(music)
+        engine.connect(music, to: engine.mainMixerNode, format: format)
         try? engine.start()
+        // The thinking music is long, so build it ahead of time off the main thread.
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            guard let self = self, let b = self.render("think") else { return }
+            DispatchQueue.main.async { self.cache["think"] = b }
+        }
     }
 
     private static let effects: [String: [Tone]] = [
@@ -32,11 +40,71 @@ final class SoundPlayer {
         "open": [Tone(freq: 880, dur: 0.08, wave: .square, vol: 0.08)],
         "buzz": [Tone(freq: 220, dur: 0.35, wave: .sawtooth, vol: 0.18, slideTo: 440)],
         "correct": [523.0, 659, 784, 1047].enumerated().map { Tone(freq: $1, dur: 0.25, wave: .triangle, vol: 0.18, at: Double($0) * 0.09) },
-        "wrong": [Tone(freq: 180, dur: 0.5, wave: .square, vol: 0.12, slideTo: 90)],
-        "timeout": [Tone(freq: 300, dur: 0.25, vol: 0.15), Tone(freq: 240, dur: 0.4, vol: 0.15, at: 0.25)],
-        "dd": [392.0, 523, 659, 784, 1047, 1319].enumerated().map { Tone(freq: $1, dur: 0.3, wave: .sawtooth, vol: 0.08, at: Double($0) * 0.07) },
+        "wrong": [Tone(freq: 196, dur: 0.22, wave: .square, vol: 0.12), Tone(freq: 147, dur: 0.55, wave: .square, vol: 0.12, at: 0.2, slideTo: 98)],
+        "timeout": [Tone(freq: 330, dur: 0.18, wave: .triangle, vol: 0.2), Tone(freq: 262, dur: 0.18, wave: .triangle, vol: 0.2, at: 0.2), Tone(freq: 196, dur: 0.6, wave: .triangle, vol: 0.22, at: 0.4)],
+        // Daily Double: a rising sweep, then a bright chord.
+        "dd": [Tone(freq: 200, dur: 0.55, wave: .sawtooth, vol: 0.09, slideTo: 1600)]
+            + [587.0, 740, 880, 1175].map { Tone(freq: $0, dur: 0.9, wave: .triangle, vol: 0.12, at: 0.55) }
+            + [1175.0, 1480, 1760, 2349].enumerated().map { Tone(freq: $1, dur: 0.25, wave: .sine, vol: 0.1, at: 0.7 + Double($0) * 0.08) },
+        // Round start: the board lights up column by column.
+        "board": [294.0, 370, 440, 587, 740, 880].enumerated().map { Tone(freq: $1, dur: 0.22, wave: .triangle, vol: 0.16, at: Double($0) * 0.11) }
+            + [587.0, 880, 1175].map { Tone(freq: $0, dur: 0.8, wave: .triangle, vol: 0.12, at: 0.72) },
+        "think": thinkMusic(),
         "fanfare": [523.0, 523, 523, 659, 784, 659, 784, 1047].enumerated().map { Tone(freq: $1, dur: 0.3, wave: .triangle, vol: 0.18, at: Double($0) * 0.14) },
     ]
+
+    /// Buzzworthy's own thinking music for the Final Showdown: a ticking clock,
+    /// a plucked pattern over four chords, and a bass, building every four bars.
+    private static func thinkMusic() -> [Tone] {
+        let beat = 0.5
+        // (bass, chord tones low to high)
+        let chords: [(Double, [Double])] = [
+            (110.00, [220.00, 261.63, 329.63, 440.00]),   // A minor
+            (87.31, [174.61, 220.00, 261.63, 349.23]),    // F
+            (130.81, [261.63, 329.63, 392.00, 523.25]),   // C
+            (98.00, [196.00, 246.94, 293.66, 392.00]),    // G
+        ]
+        let pattern = [0, 2, 1, 3, 2, 3, 1, 2]
+        var out: [Tone] = []
+        for bar in 0..<17 {
+            let start = Double(bar) * 4 * beat
+            let (bass, notes) = chords[bar % 4]
+            let section = bar / 4
+            for b in 0..<4 {
+                let t = start + Double(b) * beat
+                out.append(Tone(freq: b % 2 == 0 ? 1500 : 1100, dur: 0.05, wave: .square, vol: 0.035, at: t))   // clock
+                if b == 0 || b == 2 { out.append(Tone(freq: bass, dur: 0.9, wave: .triangle, vol: 0.2, at: t)) }
+            }
+            if bar == 16 {   // last bar: one held chord
+                for n in notes { out.append(Tone(freq: n, dur: 3.0, wave: .triangle, vol: 0.1, at: start)) }
+                continue
+            }
+            for (i, idx) in pattern.enumerated() {
+                let t = start + Double(i) * beat / 2
+                out.append(Tone(freq: notes[idx], dur: 0.32, wave: .triangle, vol: 0.13, at: t))
+                if section >= 2 { out.append(Tone(freq: notes[idx] * 2, dur: 0.2, wave: .sine, vol: 0.05, at: t)) }
+            }
+            if section % 2 == 1 {   // a slow tune on top in every other section
+                let top = [notes[3], notes[2], notes[3], notes[1]]
+                for (i, n) in top.enumerated() {
+                    out.append(Tone(freq: n * 2, dur: 0.6, wave: .sine, vol: 0.09, at: start + Double(i) * beat))
+                }
+            }
+        }
+        return out
+    }
+
+    func startMusic(_ name: String) {
+        guard enabled, let buffer = buffer(for: name) else { return }
+        if !engine.isRunning { try? engine.start() }
+        music.stop()
+        music.scheduleBuffer(buffer, at: nil, options: [], completionHandler: nil)
+        music.play()
+    }
+
+    func stopMusic() {
+        if music.isPlaying { music.stop() }
+    }
 
     func play(_ name: String) {
         guard enabled, let buffer = buffer(for: name) else { return }
@@ -47,6 +115,12 @@ final class SoundPlayer {
 
     private func buffer(for name: String) -> AVAudioPCMBuffer? {
         if let b = cache[name] { return b }
+        let b = render(name)
+        cache[name] = b
+        return b
+    }
+
+    private func render(_ name: String) -> AVAudioPCMBuffer? {
         guard let tones = Self.effects[name] else { return nil }
         let rate = format.sampleRate
         let length = (tones.map { $0.at + $0.dur }.max() ?? 0) + 0.05
@@ -80,7 +154,6 @@ final class SoundPlayer {
             }
         }
         for i in 0..<Int(frames) { out[i] = max(-1, min(1, out[i])) }
-        cache[name] = buf
         return buf
     }
 
@@ -88,7 +161,10 @@ final class SoundPlayer {
     func react(from a: TVState?, to b: TVState) {
         guard let a = a else { return }
         if a.phase != b.phase {
+            if a.phase == "final-answer" { stopMusic(); play("timeout") }
             switch b.phase {
+            case "final-answer": startMusic("think")
+            case "board" where a.phase == "lobby" || a.phase == "round-end": play("board")
             case "reading": play("pick")
             case "open" where a.phase == "reading": play("open")
             case "answering": play("buzz")
