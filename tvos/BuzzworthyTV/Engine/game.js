@@ -17,8 +17,13 @@ const T = {
   finalAnswer: 35000,
   finalStep: 6500,
   hostRead: 30000,      // host mode: fallback if the host forgets to open buzzers
-  hostAnswer: 30000,    // host mode: time for the host to judge a spoken answer
+  hostAnswer: 30000,    // host mode: daily double fallback for the host to judge a spoken answer
+  hostGrace: 3000,      // host mode: after the answer clock hits zero, the host still has this long to rule
 };
+
+// Answer clock choices (seconds) for spoken answers in host mode. 0 means no clock.
+const ANSWER_TIMES = [5, 10, 15, 20, 30, 0];
+const MAX_ADJUST = 1000000;
 
 function readingTime(text) {
   return Math.max(2500, Math.min(7000, 1200 + text.length * 45));
@@ -57,6 +62,8 @@ class Game {
     this.final = null;
     this.lastActive = Date.now();
     this.events = 0;
+    this.answerTime = 10;     // host mode: seconds a player has to start answering after buzzing in
+    this.easyPrev = null;     // pack selection to restore when easy mode is switched off
   }
 
   // ---------- setup ----------
@@ -78,6 +85,50 @@ class Game {
     if (this.phase !== 'lobby' || !this.packs.some((pk) => pk.id === id)) return;
     if (this.selectedPacks.has(id)) this.selectedPacks.delete(id);
     else this.selectedPacks.add(id);
+    this.touch();
+  }
+
+  // Easy mode: only the packs marked easy (casual questions).
+  easyPacks() {
+    return this.packs.filter((pk) => pk.easy).map((pk) => pk.id);
+  }
+
+  easyOn() {
+    return this.selectedPacks.size > 0 && [...this.selectedPacks].every((id) => this.packs.some((pk) => pk.id === id && pk.easy));
+  }
+
+  toggleEasy() {
+    if (this.phase !== 'lobby') return;
+    const easy = this.easyPacks();
+    if (!easy.length) return;
+    if (this.easyOn()) {
+      const prev = this.easyPrev && [...this.easyPrev].filter((id) => !easy.includes(id));
+      this.selectedPacks = new Set(prev && prev.length ? prev : this.packs.filter((pk) => pk.selected && !pk.easy).map((pk) => pk.id));
+      if (!this.selectedPacks.size) {
+        const first = this.packs.find((pk) => !pk.easy);
+        this.selectedPacks.add(first ? first.id : easy[0]);
+      }
+      this.easyPrev = null;
+    } else {
+      this.easyPrev = new Set(this.selectedPacks);
+      this.selectedPacks = new Set(easy);
+    }
+    this.touch();
+  }
+
+  setAnswerTime(sec) {
+    sec = Number(sec);
+    if (!ANSWER_TIMES.includes(sec)) return;
+    this.answerTime = sec;
+    this.touch();
+  }
+
+  // Host or captain fixes a score by hand.
+  adjustScore(pid, delta) {
+    const p = this.players.get(pid);
+    delta = Math.round(Number(delta));
+    if (!p || !Number.isFinite(delta) || delta === 0 || Math.abs(delta) > MAX_ADJUST) return;
+    p.score = Math.max(-MAX_ADJUST, Math.min(MAX_ADJUST, p.score + delta));
     this.touch();
   }
 
@@ -297,9 +348,20 @@ class Game {
     if (now < p.lockUntil) return { result: 'early' };
     this.clue.buzzedId = pid;
     this.phase = 'answering';
-    this.setTimer(this.hostMode ? T.hostAnswer : T.answer, () => this.submitAnswer(pid, '', true));
+    if (this.hostMode) this.startAnswerClock(pid);
+    else this.setTimer(T.answer, () => this.submitAnswer(pid, '', true));
     this.touch();
     return { result: 'won' };
+  }
+
+  // Host mode: the visible answer clock. When it hits zero the TV shows "Time's up"
+  // and the host gets a short grace period to rule before it counts as a miss.
+  startAnswerClock(pid) {
+    if (!this.answerTime) { this.clearTimer(); return; }
+    const ms = this.answerTime * 1000;
+    this.setTimer(ms + T.hostGrace, () => this.submitAnswer(pid, '', true));
+    this.deadline = Date.now() + ms / SPEED;
+    this.duration = ms / SPEED;
   }
 
   // The host's ruling on a spoken answer.
@@ -613,10 +675,13 @@ class Game {
         tried: this.clue.tried,
       },
       lastResult: this.lastResult,
+      answerTime: this.answerTime,
     };
     if (this.phase === 'lobby') {
-      v.packs = this.packs.map((pk) => ({ id: pk.id, title: pk.title, description: pk.description, count: pk.categories.length, selected: this.selectedPacks.has(pk.id) }));
+      v.packs = this.packs.map((pk) => ({ id: pk.id, title: pk.title, description: pk.description, count: pk.categories.length, selected: this.selectedPacks.has(pk.id), easy: !!pk.easy }));
       v.categoryCount = this.bank().categories.length;
+      v.easyAvailable = this.easyPacks().length > 0;
+      v.easyMode = this.easyOn();
     }
     if (this.final) {
       const f = this.final;
@@ -655,6 +720,8 @@ class Game {
         alt: this.clue ? this.clue.alt : [],
         finalAnswer: this.final ? this.final.a : null,
         finalAnswers: this.final && this.phase === 'final-answer' ? this.final.answers : null,
+        // Where the daily doubles hide on the current board (host only).
+        dd: b ? b.map((c) => c.clues.map((cl) => cl.dd)) : null,
       };
     }
     return v;

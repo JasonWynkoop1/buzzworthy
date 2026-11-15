@@ -48,6 +48,22 @@
   .no { color: var(--bad); }
   .quick { display: flex; gap: 8px; }
   .quick button { flex: 1; padding: 10px 0; font-size: 14px; }
+  .mini button.dd { color: #10082a; background: var(--sun); box-shadow: inset 0 0 0 2px #fff; }
+  .mini button.dd::after { content: 'DD'; display: block; font-size: 9px; line-height: 1; }
+  .mini button.dd:disabled { color: transparent; background: rgba(255,209,102,.12); box-shadow: none; }
+  .mini button.dd:disabled::after { content: ''; }
+  .clock { font-family: 'Bungee'; font-size: 44px; color: var(--sun); line-height: 1; }
+  .sheet { position: fixed; inset: 0; background: rgba(8,4,24,.75); display: none; align-items: flex-end; justify-content: center; z-index: 8; }
+  .sheet.open { display: flex; }
+  .sheet-in { width: 100%; max-width: 480px; max-height: 88vh; overflow: auto; background: #1d0e46; border-radius: 20px 20px 0 0; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+  .sheet .hd { display: flex; justify-content: space-between; align-items: center; font-weight: 800; font-size: 18px; }
+  .sheet .hd button { padding: 8px 14px; font-size: 14px; }
+  .srow { display: grid; grid-template-columns: 1fr auto 44px 44px 52px; gap: 6px; align-items: center; background: var(--panel); border-left: 5px solid var(--c); border-radius: 12px; padding: 8px 8px 8px 12px; }
+  .srow .n { font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .srow b { font-family: 'Bungee'; font-size: 15px; margin-right: 4px; }
+  .srow b.neg { color: var(--bad); }
+  .srow button { padding: 8px 0; font-size: 18px; }
+  .srow button.set { font-size: 13px; }
   .banner { position: fixed; top: 0; left: 0; right: 0; text-align: center; background: var(--bad); padding: 6px; font-weight: 600; display: none; z-index: 9; }
 </style>
 </head>
@@ -56,6 +72,7 @@
 <div class="top" id="top" style="display:none"></div>
 <div id="app"></div>
 <div class="captain" id="captain"></div>
+<div class="sheet" id="scores"></div>
 
 <script src="/config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
@@ -65,6 +82,7 @@
 const params = new URLSearchParams(location.search);
 let room = (params.get('room') || localStorage.getItem('bw-room') || '').toUpperCase();
 let pid = null, S = null, screenKey = '', flash = '';
+let scoresOpen = false, adjStep = 200;
 
 function store(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
 function load(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
@@ -148,8 +166,49 @@ function renderCaptain() {
   if (['reveal', 'round-end', 'final-wager', 'final-answer', 'final-reveal'].includes(ph)) b.push(['advance', 'Continue']);
   if (ph === 'board') b.push(['endRound', 'End round early']);
   if (ph === 'gameover') b.push(['playAgain', 'Play again']);
-  c.innerHTML = b.map(([t, l]) => `<button class="${t === 'start' || t === 'advance' || t === 'playAgain' ? '' : 'ghost'}" data-act="${t}">${l}</button>`).join('');
+  c.innerHTML = b.map(([t, l]) => `<button class="${t === 'start' || t === 'advance' || t === 'playAgain' ? '' : 'ghost'}" data-act="${t}">${l}</button>`).join('') +
+    (ph !== 'lobby' && S.players.length ? '<button class="ghost" data-ui="scores">Fix scores</button>' : '');
 }
+
+// Host or captain can nudge any score up or down, or type an exact one.
+function renderScores() {
+  const el = document.getElementById('scores');
+  if (!scoresOpen || !S || !S.me || !S.me.isCaptain) { el.classList.remove('open'); el.innerHTML = ''; return; }
+  el.classList.add('open');
+  el.innerHTML = `<div class="sheet-in">
+    <div class="hd"><span>Fix scores</span><button data-ui="close">Done</button></div>
+    <div class="muted" style="font-size:13px">Tap + or - to change a score by this much, or Set to type an exact score.</div>
+    <div class="quick">${[100, 200, 500, 1000].map((n) => `<button class="${n === adjStep ? '' : 'ghost'}" data-step="${n}">$${n}</button>`).join('')}</div>
+    ${S.players.map((p) => `<div class="srow" style="--c:${p.color}">
+      <span class="n">${BW.esc(p.name)}</span><b class="${p.score < 0 ? 'neg' : ''}">${BW.money(p.score)}</b>
+      <button class="ghost" data-adj="${p.id}" data-d="-1">&minus;</button>
+      <button data-adj="${p.id}" data-d="1">+</button>
+      <button class="ghost set" data-set="${p.id}">Set</button></div>`).join('')}
+  </div>`;
+}
+
+document.addEventListener('click', (e) => {
+  const u = e.target.closest('[data-ui]');
+  if (u) { scoresOpen = u.dataset.ui === 'scores'; renderScores(); return; }
+  if (e.target.id === 'scores') { scoresOpen = false; renderScores(); return; }
+  const st = e.target.closest('[data-step]');
+  if (st) { adjStep = Number(st.dataset.step); renderScores(); return; }
+  const adj = e.target.closest('[data-adj]');
+  if (adj) { act('adjustScore', { targetPid: adj.dataset.adj, delta: adjStep * Number(adj.dataset.d) }); return; }
+  const set = e.target.closest('[data-set]');
+  if (set) {
+    const p = S.players.find((x) => x.id === set.dataset.set);
+    if (!p) return;
+    const v = prompt(`New score for ${p.name}:`, String(p.score));
+    if (v === null) return;
+    const n = Math.round(Number(String(v).replace(/[$,\s]/g, '')));
+    if (!Number.isFinite(n)) return alert('That is not a number.');
+    if (n !== p.score) act('adjustScore', { targetPid: p.id, delta: n - p.score });
+    return;
+  }
+  const sec = e.target.closest('[data-sec]');
+  if (sec) act('setAnswerTime', { seconds: Number(sec.dataset.sec) });
+});
 
 document.addEventListener('click', (e) => {
   const a = e.target.closest('[data-act]');
@@ -168,6 +227,11 @@ function setScreen(key, html, after) {
   app.innerHTML = html;
   after && after();
   return true;
+}
+
+function easyButton(s) {
+  if (!s.easyAvailable) return '';
+  return `<button class="${s.easyMode ? '' : 'ghost'}" data-act="toggleEasy" style="text-align:left;border:2px solid var(--sun)">${s.easyMode ? '&#10003; ' : ''}&#9733; Easy mode <small style="opacity:.75;display:block;font-weight:600">${s.easyMode ? 'On: casual, family-friendly questions only. Tap to go back.' : 'Casual, family-friendly questions only'}</small></button>`;
 }
 
 function answerForm(key, type, placeholder, extraHtml = '') {
@@ -215,6 +279,7 @@ function wagerForm(key, type, min, max, extraHtml = '') {
 }
 
 function render() {
+  renderScores();
   if (S.me.isHost) { renderTop(); renderCaptain(); return renderHost(); }
   renderTop();
   renderCaptain();
@@ -224,10 +289,11 @@ function render() {
   if (ph === 'lobby') {
     const packKey = s.packs.map((pk) => (pk.selected ? 1 : 0)).join('');
     const packHtml = s.me.isCaptain ? `<div class="stack" style="margin-top:8px">
+        ${easyButton(s)}
         <div class="muted">Question packs (${s.categoryCount} categories${s.categoryCount < 12 ? ', need 12+' : ''})</div>
         ${s.packs.map((pk) => `<button class="${pk.selected ? '' : 'ghost'}" data-act="togglePack" data-pack="${BW.esc(pk.id)}" style="text-align:left">${pk.selected ? '&#10003; ' : ''}${BW.esc(pk.title)} <small style="opacity:.7">${pk.count} categories</small></button>`).join('')}
       </div>` : `<div class="muted">Packs: ${s.packs.filter((pk) => pk.selected).map((pk) => BW.esc(pk.title)).join(', ')}</div>`;
-    return setScreen('lobby-' + s.players.length + s.me.isCaptain + packKey, `<div class="center" style="overflow:auto">
+    return setScreen('lobby-' + s.players.length + s.me.isCaptain + packKey + s.easyMode, `<div class="center" style="overflow:auto">
       <div class="logo">YOU'RE IN!</div>
       <div class="msg">${s.players.length} player${s.players.length === 1 ? '' : 's'} in the room</div>
       <div class="muted">${s.me.isCaptain ? 'You are the captain. Choose question packs, then tap Start game when everyone has joined.' : 'Waiting for the captain to start the game...'}</div>
@@ -258,6 +324,7 @@ function render() {
       if (s.hostMode) return setScreen('say-' + c.ci + c.ri + s.round + '-' + c.tried.length, `${clueHtml}<div class="center">
         <div class="big ok">YOU'RE UP!</div>
         <div class="msg">Say your answer out loud.</div>
+        ${s.deadline ? '<div class="clock" data-timer-text data-zero="TIME!"></div><div class="timer"><i data-timer-bar data-total="' + s.duration + '"></i></div>' : ''}
         <div class="muted">${BW.esc(s.hostName || 'The host')} will decide if you're right.</div></div>`);
       return answerForm('ans-' + c.ci + c.ri + s.round + '-' + c.tried.length, 'answer', 'Your answer', `<div class="big ok" style="text-align:center">You got it!</div>${clueHtml}`);
     }
@@ -356,23 +423,28 @@ function renderHost() {
 
   if (ph === 'lobby') {
     const packKey = s.packs.map((pk) => (pk.selected ? 1 : 0)).join('');
-    return setScreen('h-lobby-' + s.players.length + packKey, `<div class="center" style="overflow:auto">
+    return setScreen('h-lobby-' + s.players.length + packKey + s.easyMode + s.answerTime, `<div class="center" style="overflow:auto">
       <div class="logo">YOU'RE THE HOST</div>
       <div class="msg">${s.players.length} player${s.players.length === 1 ? '' : 's'} joined</div>
       <div class="muted">You'll read each clue out loud, open the buzzers, and judge spoken answers. Tap Start game when everyone is in.</div>
       <div class="stack" style="margin-top:8px">
+        <div class="muted">Answer timer after someone buzzes in</div>
+        <div class="quick">${[5, 10, 15, 20, 0].map((n) => `<button class="${n === s.answerTime ? '' : 'ghost'}" data-sec="${n}">${n ? n + 's' : 'Off'}</button>`).join('')}</div>
+        ${easyButton(s)}
         <div class="muted">Question packs (${s.categoryCount} categories${s.categoryCount < 12 ? ', need 12+' : ''})</div>
         ${s.packs.map((pk) => `<button class="${pk.selected ? '' : 'ghost'}" data-act="togglePack" data-pack="${BW.esc(pk.id)}" style="text-align:left">${pk.selected ? '&#10003; ' : ''}${BW.esc(pk.title)} <small style="opacity:.7">${pk.count} categories</small></button>`).join('')}
       </div></div>`);
   }
   if (ph === 'board') {
-    const key = 'h-board-' + s.round + s.controllerId + s.board.map((cc) => cc.clues.map((x) => (x.used ? 1 : 0)).join('')).join('');
+    const dd = sec.dd || [];
+    const ddLeft = s.board.reduce((n, cc, ci) => n + cc.clues.filter((x, ri) => !x.used && dd[ci] && dd[ci][ri]).length, 0);
+    const key = 'h-board-' + s.round + s.controllerId + s.board.map((cc) => cc.clues.map((x) => (x.used ? 1 : 0)).join('')).join('') + JSON.stringify(dd);
     return setScreen(key, `
       <div class="msg" style="text-align:center"><b>${pname(s.controllerId)}</b> picks a clue.</div>
-      <div class="muted" style="text-align:center;font-size:13px">They pick on their phone, or tell you and you tap it here.</div>
+      <div class="muted" style="text-align:center;font-size:13px">They pick on their phone, or tell you and you tap it here.${ddLeft ? ` Gold tiles are Daily Doubles (${ddLeft} left, only you can see them).` : ''}</div>
       <div class="mini">
         ${s.board.map((cc) => `<div class="h">${BW.esc(cc.name)}</div>`).join('')}
-        ${[0, 1, 2, 3, 4].map((ri) => s.board.map((cc, ci) => `<button data-pick="${ci},${ri}" ${cc.clues[ri].used ? 'disabled' : ''}>${cc.clues[ri].value}</button>`).join('')).join('')}
+        ${[0, 1, 2, 3, 4].map((ri) => s.board.map((cc, ci) => `<button class="${dd[ci] && dd[ci][ri] ? 'dd' : ''}" data-pick="${ci},${ri}" ${cc.clues[ri].used ? 'disabled' : ''}>${cc.clues[ri].value}</button>`).join('')).join('')}
       </div>`);
   }
   if (ph === 'reading') {
@@ -396,6 +468,7 @@ function renderHost() {
     return setScreen('h-judge-' + ph + c.ci + c.ri + who + c.tried.length, `${clueBlock()}
       <div class="center" style="gap:10px">
         <div class="msg"><b>${pname(who)}</b> is answering.</div>
+        ${ph === 'answering' && s.deadline ? '<div class="clock" data-timer-text data-zero="Time\'s up!"></div><div class="timer"><i data-timer-bar data-total="' + s.duration + '"></i></div>' : ''}
         <div class="muted">Listen, then tap one:</div>
         <div style="width:100%">${judgeBtns}</div>
       </div>`);

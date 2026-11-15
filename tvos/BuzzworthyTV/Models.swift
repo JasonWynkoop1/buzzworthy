@@ -20,10 +20,15 @@ struct TVState: Decodable {
     var packs: [Pack]?
     var categoryCount: Int?
     var finalRound: FinalRound?
+    /// Host mode: seconds to answer after buzzing in (0 = no clock).
+    var answerTime: Int?
+    var easyAvailable: Bool?
+    var easyMode: Bool?
 
     enum CodingKeys: String, CodingKey {
         case code, phase, round, now, deadline, duration, captainId, hostMode, hostName, hostConnected
         case controllerId, players, board, clue, lastResult, packs, categoryCount
+        case answerTime, easyAvailable, easyMode
         case finalRound = "final"
     }
 
@@ -82,6 +87,7 @@ struct Pack: Decodable, Identifiable {
     var description: String
     var count: Int
     var selected: Bool
+    var easy: Bool?
 }
 
 struct FinalRound: Decodable {

@@ -11,5 +11,5 @@ enum Config {
     static func joinURL(room: String) -> String { "https://\(joinSite)/play?room=\(room)" }
 
     /// Question packs bundled in the app (files in the Questions folder).
-    static let packIDs = ["default", "general", "movies", "nineties", "sports"]
+    static let packIDs = ["easy", "default", "general", "movies", "nineties", "sports"]
 }

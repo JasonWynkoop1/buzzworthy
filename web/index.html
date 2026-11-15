@@ -45,6 +45,7 @@
   .clue .status { margin-top: 4vh; font-size: 3.2vh; font-weight: 600; min-height: 4.5vh; }
   .clue .status.go { color: var(--good); font-family: 'Bungee'; font-size: 4.2vh; animation: pulse .7s infinite alternate; }
   @keyframes pulse { to { transform: scale(1.06); } }
+  .clue .clock { font-family: 'Bungee'; font-size: 5vh; color: var(--sun); margin-left: 1.2vw; vertical-align: middle; }
   .clue .ans { margin-top: 3vh; font-family: 'Bungee'; font-size: 5.5vh; color: var(--sun); animation: zoom .3s ease; }
   .result { margin-top: 2vh; font-size: 3vh; padding: 1vh 2vw; border-radius: 1.2vh; display: inline-block; }
   .result.ok { background: rgba(6,214,160,.18); color: var(--good); }
@@ -262,9 +263,10 @@ function renderLobby(m) {
     } catch (e) { document.getElementById('qr').style.display = 'none'; }
   }
   document.getElementById('hostline').innerHTML = S.hostMode
-    ? `<b>3.</b> Host: <span style="color:var(--sun)">${BW.esc(S.hostName)}</span> 🎤 Players answer out loud.`
+    ? `<b>3.</b> Host: <span style="color:var(--sun)">${BW.esc(S.hostName)}</span> 🎤 Players answer out loud${S.answerTime ? ` within ${S.answerTime} seconds` : ''}.`
     : '<b>3.</b> Want a host? They tap <i>Join as the host</i>. Otherwise players type answers.';
   document.getElementById('packs').innerHTML = `<div class="packlabel">Question packs (tap to switch on or off) &middot; ${S.categoryCount} categories${S.categoryCount < 12 ? ' <span style="color:var(--bad)">need at least 12</span>' : ''}</div>` +
+    (S.easyAvailable ? `<button class="pack ${S.easyMode ? 'on' : ''}" data-act="toggleEasy" title="Only casual, family-friendly questions">${S.easyMode ? '&#10003; ' : ''}&#9733; Easy mode</button>` : '') +
     S.packs.map((pk) => `<button class="pack ${pk.selected ? 'on' : ''}" data-act="togglePack" data-pack="${BW.esc(pk.id)}" title="${BW.esc(pk.description)}">${pk.selected ? '&#10003; ' : ''}${BW.esc(pk.title)} <small>${pk.count}</small></button>`).join('');
   document.getElementById('roster').innerHTML = S.players.length
     ? S.players.map((p) => `<span style="--c:${p.color}">${BW.esc(p.name)}${p.id === S.captainId ? ' ★' : ''}</span>`).join('')
@@ -297,11 +299,11 @@ function renderClue(m) {
   if (S.phase === 'reading') status = S.hostMode ? `<div class="status">${BW.esc(S.hostName || 'The host')} is reading the clue...</div>` : '<div class="status">Get ready...</div>';
   if (S.phase === 'open') status = `<div class="status go">BUZZ IN!</div>${resultLine()}`;
   if (S.phase === 'answering') status = S.hostMode
-    ? `<div class="status"><b style="color:${player(c.buzzedId)?.color}">${pname(c.buzzedId)}</b> buzzed in! Say your answer!</div>`
+    ? `<div class="status"><b style="color:${player(c.buzzedId)?.color}">${pname(c.buzzedId)}</b> buzzed in! Say your answer!${S.deadline ? ' <span class="clock" data-timer-text data-zero="Time\'s up!"></span>' : ''}</div>`
     : `<div class="status"><b style="color:${player(c.buzzedId)?.color}">${pname(c.buzzedId)}</b> buzzed in! Answering... <span data-timer-text></span></div>`;
   if (S.phase === 'dd-answer') status = `<div class="status"><b>${pname(S.controllerId)}</b> wagered <b>${BW.money(c.wager)}</b>. Answering... <span data-timer-text></span></div>`;
   if (S.phase === 'reveal') status = `<div class="ans">${BW.esc(c.answer)}</div>${S.lastResult ? resultLine() : '<div class="sub">Nobody buzzed in.</div>'}`;
-  const showTimer = S.hostMode ? S.phase === 'open' : ['open', 'answering', 'dd-answer'].includes(S.phase);
+  const showTimer = S.hostMode ? S.phase === 'open' || (S.phase === 'answering' && !!S.deadline) : ['open', 'answering', 'dd-answer'].includes(S.phase);
   m.innerHTML = `
     <div class="clue">
       <div class="meta"><span>${BW.esc(c.cat)}</span><span class="v">${c.dd ? 'DAILY DOUBLE' : '$' + c.value}</span></div>
