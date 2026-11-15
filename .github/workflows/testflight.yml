@@ -76,10 +76,15 @@ jobs:
           set -o pipefail
           BUILD="${{ github.run_number }}.${{ github.run_attempt }}"
           AUTH="-allowProvisioningUpdates -authenticationKeyPath $ASC_KEY_PATH -authenticationKeyID $ASC_KEY_ID -authenticationKeyIssuerID $ASC_ISSUER_ID"
+          # Archive without signing. Signing during the archive made every fresh CI machine
+          # create a new development certificate, until the Apple account hit its limit.
+          # The export step below signs for the App Store with Apple's cloud-managed
+          # distribution certificate instead, so no certificates pile up.
           xcodebuild -project BuzzworthyTV.xcodeproj -scheme BuzzworthyTV -configuration Release \
             -destination 'generic/platform=tvOS' -archivePath build/Buzzworthy.xcarchive \
-            DEVELOPMENT_TEAM=$TEAM_ID CODE_SIGN_STYLE=Automatic CURRENT_PROJECT_VERSION=$BUILD \
-            $AUTH archive | tail -n 40
+            DEVELOPMENT_TEAM=$TEAM_ID CURRENT_PROJECT_VERSION=$BUILD \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            archive | tail -n 40
           cat > build/ExportOptions.plist <<PLIST
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
