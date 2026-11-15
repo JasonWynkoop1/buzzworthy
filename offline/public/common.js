@@ -60,7 +60,8 @@ const BW = {
       });
       document.querySelectorAll('[data-timer-text]').forEach((el) => {
         const left = BW.remaining(s);
-        el.textContent = left == null ? '' : Math.ceil(left / 1000);
+        const t = left == null ? '' : left <= 0 && el.dataset.zero ? el.dataset.zero : Math.ceil(left / 1000);
+        if (el.textContent !== String(t)) el.textContent = t;
       });
       requestAnimationFrame(tick);
     };

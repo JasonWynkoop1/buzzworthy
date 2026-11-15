@@ -51,7 +51,7 @@ struct Seats: View {
                 if s.hostMode {
                     HStack(spacing: 8) {
                         Image(systemName: "mic.fill")
-                        Text("Host: \(s.hostName). Answer out loud.")
+                        Text("Host: \(s.hostName). Answer out loud" + ((s.answerTime ?? 0) > 0 ? " within \(s.answerTime ?? 0) seconds." : "."))
                     }
                     .font(Theme.body(20, .semibold))
                     .foregroundColor(Theme.ink)
@@ -103,6 +103,22 @@ struct PackPicker: View {
                     .font(Theme.body(20)).foregroundColor(Theme.muted)
                 if (s.categoryCount ?? 0) < 12 {
                     Text("Need at least 12").font(Theme.body(20, .semibold)).foregroundColor(Theme.bad)
+                }
+                Spacer(minLength: 0)
+                if s.easyAvailable == true {
+                    let on = s.easyMode == true
+                    Button {
+                        host.act(["type": "toggleEasy"])
+                    } label: {
+                        HStack(spacing: 10) {
+                            Image(systemName: on ? "checkmark.circle.fill" : "star.fill").font(.system(size: 20))
+                            Text(on ? "Easy mode on" : "Easy mode").font(Theme.body(20, .heavy))
+                        }
+                        .padding(.horizontal, 18).padding(.vertical, 8)
+                    }
+                    .buttonStyle(TVButtonStyle(fill: on ? Theme.yellow : Theme.surface,
+                                               text: on ? Theme.ink : Theme.yellow,
+                                               corner: 30))
                 }
             }
             // With the archive topics there are about 15 buttons, so use four narrower columns

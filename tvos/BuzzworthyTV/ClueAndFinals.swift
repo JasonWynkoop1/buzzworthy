@@ -62,9 +62,13 @@ struct TimerRing: View {
                     .trim(from: 0, to: frac)
                     .stroke(left < 4000 ? Theme.coral : color, style: StrokeStyle(lineWidth: 14, lineCap: .round))
                     .rotationEffect(.degrees(-90))
-                Text("\(Int((left / 1000).rounded(.up)))")
-                    .font(Theme.display(44))
-                    .monospacedDigit()
+                if left <= 0 && s.phase == "answering" && s.hostMode {
+                    Text("TIME").font(Theme.display(34)).foregroundColor(Theme.coral)
+                } else {
+                    Text("\(Int((left / 1000).rounded(.up)))")
+                        .font(Theme.display(44))
+                        .monospacedDigit()
+                }
             }
             .frame(width: 140, height: 140)
         }
@@ -113,7 +117,9 @@ struct ClueView: View {
 
     var body: some View {
         if let c = s.clue {
-            let showTimer = s.hostMode ? s.phase == "open" : ["open", "answering", "dd-answer"].contains(s.phase)
+            let showTimer = s.hostMode
+                ? s.phase == "open" || (s.phase == "answering" && s.deadline != nil)
+                : ["open", "answering", "dd-answer"].contains(s.phase)
             let buzzer = s.phase == "answering" ? s.player(c.buzzedId) : nil
             CluePanel(category: c.cat,
                       tag: c.dd ? "DAILY DOUBLE" : money(c.value),

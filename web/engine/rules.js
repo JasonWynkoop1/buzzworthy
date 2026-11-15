@@ -8,13 +8,14 @@ function normalizePack(id, data) {
     title: String(data.title || id),
     description: String(data.description || ''),
     selected: data.selected !== false,
+    easy: data.easy === true,
     categories: (data.categories || []).filter((c) => c.name && Array.isArray(c.clues) && c.clues.length >= 5),
     finals: (data.finals || []).filter((fin) => fin.q && fin.a),
   };
 }
 
-const TV_ACTIONS = new Set(['judge', 'openNow', 'togglePack', 'start', 'pick', 'advance', 'skip', 'override', 'finalOverride', 'endRound', 'playAgain', 'kick']);
-const CAPTAIN_ACTIONS = new Set(['togglePack', 'start', 'advance', 'skip', 'override', 'finalOverride', 'endRound', 'playAgain']);
+const TV_ACTIONS = new Set(['judge', 'openNow', 'togglePack', 'start', 'pick', 'advance', 'skip', 'override', 'finalOverride', 'endRound', 'playAgain', 'kick', 'adjustScore', 'toggleEasy', 'setAnswerTime']);
+const CAPTAIN_ACTIONS = new Set(['togglePack', 'start', 'advance', 'skip', 'override', 'finalOverride', 'endRound', 'playAgain', 'adjustScore', 'toggleEasy', 'setAnswerTime']);
 
 function act(game, role, pid, body) {
   const g = game;
@@ -55,6 +56,9 @@ function act(game, role, pid, body) {
     case 'endRound': g.endRound(); break;
     case 'playAgain': g.playAgain(); break;
     case 'kick': g.kick(body.pid); break;
+    case 'adjustScore': g.adjustScore(String(body.targetPid || ''), body.delta); break;
+    case 'toggleEasy': g.toggleEasy(); break;
+    case 'setAnswerTime': g.setAnswerTime(body.seconds); break;
     default: return { error: 'unknown action' };
   }
   return { ok: true };
