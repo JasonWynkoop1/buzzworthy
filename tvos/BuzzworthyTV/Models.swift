@@ -24,11 +24,21 @@ struct TVState: Decodable {
     var answerTime: Int?
     var easyAvailable: Bool?
     var easyMode: Bool?
+    /// Real-show archive: era buttons and the season loaded for this room.
+    var hasArchive: Bool?
+    var era: String?
+    var eras: [String]?
+    var archiveSeason: Int?
+    var archiveLoading: Bool?
+    var archiveError: Bool?
+    /// Board builder: the category names for round 1 and round 2, or nil while picking packs.
+    var draft: [[String]]?
 
     enum CodingKeys: String, CodingKey {
         case code, phase, round, now, deadline, duration, captainId, hostMode, hostName, hostConnected
         case controllerId, players, board, clue, lastResult, packs, categoryCount
         case answerTime, easyAvailable, easyMode
+        case hasArchive, era, eras, archiveSeason, archiveLoading, archiveError, draft
         case finalRound = "final"
     }
 

@@ -214,7 +214,7 @@ document.addEventListener('click', (e) => {
   const a = e.target.closest('[data-act]');
   if (a) {
     if (a.dataset.act === 'endRound' && !confirm('End this round now?')) return;
-    act(a.dataset.act, a.dataset.pack ? { pack: a.dataset.pack } : a.dataset.pid ? { targetPid: a.dataset.pid } : {}).then((r) => { if (r && r.error && r.error !== 'captain only') alert(r.error); });
+    act(a.dataset.act, a.dataset.pack ? { pack: a.dataset.pack } : a.dataset.pid ? { targetPid: a.dataset.pid } : a.dataset.era ? { era: a.dataset.era } : a.dataset.r ? { r: a.dataset.r, ci: a.dataset.ci } : {}).then((r) => { if (r && r.error && r.error !== 'captain only') alert(r.error); });
   }
   const t = e.target.closest('[data-pick]');
   if (t) { const [ci, ri] = t.dataset.pick.split(','); act('pick', { ci, ri }); }
@@ -232,6 +232,33 @@ function setScreen(key, html, after) {
 function easyButton(s) {
   if (!s.easyAvailable) return '';
   return `<button class="${s.easyMode ? '' : 'ghost'}" data-act="toggleEasy" style="text-align:left;border:2px solid var(--sun)">${s.easyMode ? '&#10003; ' : ''}&#9733; Easy mode <small style="opacity:.75;display:block;font-weight:600">${s.easyMode ? 'On: casual, family-friendly questions only. Tap to go back.' : 'Casual, family-friendly questions only'}</small></button>`;
+}
+
+// Archive era choice (Any, Classic, 2000s, Recent).
+function eraButtons(s) {
+  if (!s.hasArchive) return '';
+  const note = s.archiveLoading ? 'Loading clues...' : s.archiveError ? 'Could not load that era. Try again.' : BW.seasonLabel(s.archiveSeason);
+  return `<div class="muted">Clues from: ${BW.esc(note)}</div>
+    <div class="quick" style="flex-wrap:wrap">${s.eras.map((e) => `<button class="${s.era === e ? '' : 'ghost'}" data-act="setEra" data-era="${e}" style="flex:1 1 45%">${BW.ERA_LABELS[e] || e}</button>`).join('')}</div>`;
+}
+
+// Packs list, or the board builder when a preview is open.
+function packControls(s) {
+  if (s.draft) {
+    return `<div class="muted">Your board. Tap a category to swap it for another one.</div>
+      ${s.draft.map((row, r) => `<div class="muted" style="font-size:12px;text-transform:uppercase;letter-spacing:.1em">Round ${r + 1}</div>
+        ${row.map((name, ci) => `<button class="ghost" data-act="swapCategory" data-r="${r + 1}" data-ci="${ci}" style="text-align:left">&#8635; ${BW.esc(name)}</button>`).join('')}`).join('')}
+      <div class="quick"><button class="ghost" data-act="previewBoard">Shuffle all</button><button class="ghost" data-act="clearPreview">Back to packs</button></div>`;
+  }
+  return `${easyButton(s)}
+    <div class="muted">Question packs (${s.categoryCount} categories${s.categoryCount < 12 ? ', need 12+' : ''})</div>
+    ${s.packs.map((pk) => `<button class="${pk.selected ? '' : 'ghost'}" data-act="togglePack" data-pack="${BW.esc(pk.id)}" style="text-align:left">${pk.selected ? '&#10003; ' : ''}${BW.esc(pk.title)} <small style="opacity:.7">${pk.count} categories</small></button>`).join('')}
+    ${s.categoryCount >= 12 ? '<button data-act="previewBoard" style="border:2px solid var(--sun)">Preview and swap categories</button>' : ''}`;
+}
+
+// Changes whenever anything in the lobby setup changes, so the screen redraws.
+function setupKey(s) {
+  return [s.packs.map((pk) => (pk.selected ? 1 : 0)).join(''), s.easyMode, s.era, s.archiveSeason, s.archiveLoading, s.archiveError, s.draft ? s.draft.flat().join('|') : ''].join('/');
 }
 
 function answerForm(key, type, placeholder, extraHtml = '') {
@@ -287,13 +314,12 @@ function render() {
   const meCtrl = s.controllerId === pid;
 
   if (ph === 'lobby') {
-    const packKey = s.packs.map((pk) => (pk.selected ? 1 : 0)).join('');
     const packHtml = s.me.isCaptain ? `<div class="stack" style="margin-top:8px">
-        ${easyButton(s)}
-        <div class="muted">Question packs (${s.categoryCount} categories${s.categoryCount < 12 ? ', need 12+' : ''})</div>
-        ${s.packs.map((pk) => `<button class="${pk.selected ? '' : 'ghost'}" data-act="togglePack" data-pack="${BW.esc(pk.id)}" style="text-align:left">${pk.selected ? '&#10003; ' : ''}${BW.esc(pk.title)} <small style="opacity:.7">${pk.count} categories</small></button>`).join('')}
-      </div>` : `<div class="muted">Packs: ${s.packs.filter((pk) => pk.selected).map((pk) => BW.esc(pk.title)).join(', ')}</div>`;
-    return setScreen('lobby-' + s.players.length + s.me.isCaptain + packKey + s.easyMode, `<div class="center" style="overflow:auto">
+        ${eraButtons(s)}
+        ${packControls(s)}
+      </div>` : s.draft ? `<div class="muted">Board: ${s.draft.flat().map(BW.esc).join(', ')}</div>`
+        : `<div class="muted">Packs: ${s.packs.filter((pk) => pk.selected).map((pk) => BW.esc(pk.title)).join(', ')}</div>`;
+    return setScreen('lobby-' + s.players.length + s.me.isCaptain + setupKey(s), `<div class="center" style="overflow:auto">
       <div class="logo">YOU'RE IN!</div>
       <div class="msg">${s.players.length} player${s.players.length === 1 ? '' : 's'} in the room</div>
       <div class="muted">${s.me.isCaptain ? 'You are the captain. Choose question packs, then tap Start game when everyone has joined.' : 'Waiting for the captain to start the game...'}</div>
@@ -422,17 +448,15 @@ function renderHost() {
       <button data-judge="0" style="flex:1;padding:22px 0;font-size:22px;background:var(--bad)">&#10007; Wrong</button></div>`;
 
   if (ph === 'lobby') {
-    const packKey = s.packs.map((pk) => (pk.selected ? 1 : 0)).join('');
-    return setScreen('h-lobby-' + s.players.length + packKey + s.easyMode + s.answerTime, `<div class="center" style="overflow:auto">
+    return setScreen('h-lobby-' + s.players.length + setupKey(s) + s.answerTime, `<div class="center" style="overflow:auto">
       <div class="logo">YOU'RE THE HOST</div>
       <div class="msg">${s.players.length} player${s.players.length === 1 ? '' : 's'} joined</div>
       <div class="muted">You'll read each clue out loud, open the buzzers, and judge spoken answers. Tap Start game when everyone is in.</div>
       <div class="stack" style="margin-top:8px">
         <div class="muted">Answer timer after someone buzzes in</div>
         <div class="quick">${[5, 10, 15, 20, 0].map((n) => `<button class="${n === s.answerTime ? '' : 'ghost'}" data-sec="${n}">${n ? n + 's' : 'Off'}</button>`).join('')}</div>
-        ${easyButton(s)}
-        <div class="muted">Question packs (${s.categoryCount} categories${s.categoryCount < 12 ? ', need 12+' : ''})</div>
-        ${s.packs.map((pk) => `<button class="${pk.selected ? '' : 'ghost'}" data-act="togglePack" data-pack="${BW.esc(pk.id)}" style="text-align:left">${pk.selected ? '&#10003; ' : ''}${BW.esc(pk.title)} <small style="opacity:.7">${pk.count} categories</small></button>`).join('')}
+        ${eraButtons(s)}
+        ${packControls(s)}
       </div></div>`);
   }
   if (ph === 'board') {

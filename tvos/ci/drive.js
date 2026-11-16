@@ -45,9 +45,24 @@ async function phone(name) {
   const pri = await phone('Priya');
   await wait(1500);
   shot('1-lobby');
+  // Board builder: change era, preview the board, swap one category, then start with that board.
+  console.log('era', JSON.stringify(await ann.act({ type: 'setEra', era: 'classic' })));
+  await wait(500);
+  for (let i = 0; i < 30 && ann.state.archiveLoading; i++) await wait(500);
+  console.log('era loaded', ann.state.era, ann.state.archiveSeason, 'error', ann.state.archiveError);
+  shot('1a-era');
+  console.log('preview', JSON.stringify(await ann.act({ type: 'previewBoard' })));
+  await wait(800);
+  const was = ann.state.draft && ann.state.draft[0][1];
+  console.log('swap', JSON.stringify(await ann.act({ type: 'swapCategory', r: 1, ci: 1 })));
+  await wait(1200);
+  console.log('draft', JSON.stringify(ann.state.draft), 'swapped', was, '->', ann.state.draft && ann.state.draft[0][1]);
+  const draft = ann.state.draft;
+  shot('1b-board-builder');
   console.log('start', JSON.stringify(await ann.act({ type: 'start' })));
   await wait(1500);
   shot('2-board');
+  if (draft) console.log('board matches draft', JSON.stringify(ann.state.board.map((c) => c.name)) === JSON.stringify(draft[0]));
   const ctrl = [ann, bob, cat, dev, pri].find((p) => p.pid === ann.state.controllerId);
   const board = ann.state.board;
   // Pick a clue that is not a daily double if we can tell; the TV hides that, so just pick the top-left.

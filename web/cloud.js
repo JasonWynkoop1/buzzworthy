@@ -28,6 +28,8 @@ const Cloud = (() => {
   // ---------- TV side ----------
   let tvCb = null, lastTvState = null, hubApi = null;
 
+  let archiveSeason = null;
+
   async function loadPacks() {
     const ids = await fetch('/questions/index.json').then((r) => r.json());
     const packs = await Promise.all(ids.map((id) => fetch(`/questions/${id}.json`).then((r) => r.json())
@@ -44,8 +46,10 @@ const Cloud = (() => {
         document.head.appendChild(el);
       });
       if (window.BWArchive) {
-        const arc = (await BWArchive.load()).map((p) => BWRules.normalizePack(p.id, p)).filter((p) => p.categories.length);
+        const got = await BWArchive.load('any');
+        const arc = got.packs.map((p) => BWRules.normalizePack(p.id, p)).filter((p) => p.categories.length);
         if (arc.length) {
+          archiveSeason = got.season;
           for (const p of out) p.selected = false;
           out.unshift(...arc);
         }
@@ -64,13 +68,25 @@ const Cloud = (() => {
     let pending = null;
 
     const game = new BWGame.Game(code, packs, () => { if (!pending) pending = setTimeout(flush, 25); });
+    game.archiveSeason = archiveSeason;
     const known = (pid) => game.players.has(pid) || (pid && pid === game.hostId);
     const chFor = (pid) => { if (!chans.has(pid)) chans.set(pid, open(`bw:${code}:${pid}`, {})); return chans.get(pid); };
     const sendState = (pid) => known(pid) && chFor(pid).send('state', game.view(pid === game.hostId ? 'host' : 'player', pid));
     const reply = (pid, reqId, result) => chFor(pid).send('reply', { reqId, result });
 
+    // The lobby asked for clues from another era: download a season and hand it to the game.
+    function fetchArchive() {
+      const req = game.archiveRequest;
+      if (!req || !window.BWArchive) return;
+      game.archiveRequest = null;
+      BWArchive.load(req.era)
+        .then((got) => game.setArchivePacks(got.packs.map((p) => BWRules.normalizePack(p.id, p)), got.season, req.id))
+        .catch(() => game.archiveFailed(req.id));
+    }
+
     function flush() {
       pending = null;
+      fetchArchive();
       lastTvState = game.view('tv');
       tvCb && tvCb(lastTvState);
       for (const pid of online) sendState(pid);

@@ -23,9 +23,37 @@ var Hub = (function () {
   function reply(pid, reqId, result) {
     send(pid, 'reply', { reqId: reqId, result: result });
   }
+  // The engine asks for a new archive season when the lobby changes era.
+  // Swift downloads it and calls archiveLoaded or archiveFailed.
+  function fetchArchive() {
+    var req = game.archiveRequest;
+    if (!req) return;
+    game.archiveRequest = null;
+    __native.loadArchive(String(req.era), Number(req.id));
+  }
+  function archivePacks(tsv, season) {
+    return BWArchive.parse(String(tsv), Number(season) || 0)
+      .map(function (p) { return BWRules.normalizePack(p.id, p); })
+      .filter(function (p) { return p.categories.length; });
+  }
+  function archiveLoaded(tsv, season, id) {
+    if (!game) return;
+    try {
+      var arc = archivePacks(tsv, season);
+      if (!arc.length) throw new Error('no boards');
+      game.setArchivePacks(arc, Number(season) || null, Number(id));
+    } catch (e) {
+      __native.log('archive era failed: ' + e);
+      game.archiveFailed(Number(id));
+    }
+  }
+  function archiveFailed(id) {
+    if (game) game.archiveFailed(Number(id));
+  }
   function flush() {
     pending = null;
     if (!game) return;
+    fetchArchive();
     __native.state(JSON.stringify(game.view('tv')));
     online.forEach(sendState);
   }
@@ -68,9 +96,7 @@ var Hub = (function () {
       .filter(function (p) { return p && p.categories.length; });
     if (archiveTSV && typeof BWArchive !== 'undefined') {
       try {
-        var arc = BWArchive.parse(String(archiveTSV), Number(season) || 0)
-          .map(function (p) { return BWRules.normalizePack(p.id, p); })
-          .filter(function (p) { return p.categories.length; });
+        var arc = archivePacks(archiveTSV, season);
         if (arc.length) {
           packs.forEach(function (p) { p.selected = false; });
           packs = arc.concat(packs);
@@ -87,6 +113,7 @@ var Hub = (function () {
       if (g === game && !pending) pending = setTimeout(flush, 25);
     });
     game = g;
+    if (season && packs.some(function (p) { return /^archive-/.test(p.id); })) g.archiveSeason = Number(season);
     if (!sweeper) sweeper = setInterval(sweep, 3000);
     flush();
     return code;
@@ -128,5 +155,5 @@ var Hub = (function () {
     online.forEach(sendState);
   }
 
-  return { create: create, onMessage: onMessage, act: act, resendAll: resendAll };
+  return { create: create, onMessage: onMessage, act: act, resendAll: resendAll, archiveLoaded: archiveLoaded, archiveFailed: archiveFailed };
 })();

@@ -119,21 +119,35 @@ const BWArchive = (() => {
     return packs;
   }
 
-  // Seasons 1 and 2 are spotty in the archive, so start from 3.
-  async function load(season) {
-    const s = season || 3 + Math.floor(Math.random() * (SEASONS - 2));
+  // Seasons 1 and 2 are spotty in the archive, so start from 3. Season N first aired
+  // in the fall of 1983 + N, so season 3 is 1986-87 and season 42 is 2025-26.
+  const ERAS = {
+    any: [3, SEASONS],
+    classic: [3, 16],   // 1986-87 to 1999-2000
+    '2000s': [17, 26],  // 2000-01 to 2009-10
+    recent: [27, SEASONS], // 2010-11 on
+  };
+
+  function pickSeason(era) {
+    const [lo, hi] = ERAS[era] || ERAS.any;
+    return lo + Math.floor(Math.random() * (hi - lo + 1));
+  }
+
+  // Downloads one random season from the era and returns { season, packs }.
+  async function load(era) {
+    const s = pickSeason(era);
     const ctl = new AbortController();
     const t = setTimeout(() => ctl.abort(), 12000);
     try {
       const res = await fetch(`${BASE}season${s}.tsv`, { signal: ctl.signal });
       if (!res.ok) throw new Error(`season ${s}: ${res.status}`);
-      return parse(await res.text(), s);
+      return { season: s, packs: parse(await res.text(), s) };
     } finally {
       clearTimeout(t);
     }
   }
 
-  return { load, parse, response, topicOf };
+  return { load, parse, response, topicOf, pickSeason, ERAS };
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = BWArchive;
 else window.BWArchive = BWArchive;
