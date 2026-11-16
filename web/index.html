@@ -435,7 +435,7 @@ function renderBoard(m) {
         return `<div class="tile ${cl.used ? 'used' : ''}" style="--col:${COLS[ci]};--d:${ri * 6 + ci}" data-pick="${ci},${ri}">${cl.used ? '' : '$' + cl.value}</div>`;
       }).join('')).join('')}
     </div>
-    <div class="caption"><b>${pname(S.controllerId)}</b>, pick a clue on your phone.</div>`;
+    <div class="caption"><b>${pname(S.controllerId)}</b>, ${S.hostMode ? `tell ${BW.esc(S.hostName || 'the host')} your pick: a category and an amount.` : 'pick a clue on your phone.'}</div>`;
 }
 
 function resultLine() {
