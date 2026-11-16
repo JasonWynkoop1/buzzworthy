@@ -15,7 +15,7 @@ function normalizePack(id, data) {
 }
 
 const TV_ACTIONS = new Set(['judge', 'openNow', 'togglePack', 'start', 'pick', 'advance', 'skip', 'override', 'finalOverride', 'endRound', 'playAgain', 'kick', 'adjustScore', 'toggleEasy', 'setAnswerTime', 'setEra', 'previewBoard', 'swapCategory', 'clearPreview']);
-const CAPTAIN_ACTIONS = new Set(['togglePack', 'start', 'advance', 'skip', 'override', 'finalOverride', 'endRound', 'playAgain', 'adjustScore', 'toggleEasy', 'setAnswerTime', 'setEra', 'previewBoard', 'swapCategory', 'clearPreview']);
+const CAPTAIN_ACTIONS = new Set(['kick', 'togglePack', 'start', 'advance', 'skip', 'override', 'finalOverride', 'endRound', 'playAgain', 'adjustScore', 'toggleEasy', 'setAnswerTime', 'setEra', 'previewBoard', 'swapCategory', 'clearPreview']);
 
 function act(game, role, pid, body) {
   const g = game;
@@ -55,7 +55,14 @@ function act(game, role, pid, body) {
     case 'finalOverride': g.finalOverride(body.targetPid || body.pid); break;
     case 'endRound': g.endRound(); break;
     case 'playAgain': g.playAgain(); break;
-    case 'kick': g.kick(body.pid); break;
+    case 'kick': {
+      // The TV can remove anyone. The captain or host can tidy up the lobby (not themselves).
+      const target = String(body.targetPid || body.pid || '');
+      if (role !== 'tv' && (g.phase !== 'lobby' || target === pid)) return { error: 'You can only remove players before the game starts.' };
+      g.kick(target);
+      break;
+    }
+    case 'react': g.react(pid, body.e); break;
     case 'adjustScore': g.adjustScore(String(body.targetPid || ''), body.delta); break;
     case 'toggleEasy': g.toggleEasy(); break;
     case 'setAnswerTime': g.setAnswerTime(body.seconds); break;

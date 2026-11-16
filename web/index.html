@@ -5,111 +5,172 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Buzzworthy</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@700;900&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/style.css">
 <style>
   body { overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
-  header { display: flex; align-items: center; justify-content: space-between; padding: 1.2vh 2vw; }
-  .logo { font-family: 'Bungee', sans-serif; font-size: 3.2vh; letter-spacing: .05em; background: linear-gradient(90deg, var(--hot), var(--sun)); -webkit-background-clip: text; background-clip: text; color: transparent; }
-  .joininfo { font-size: 2.2vh; color: var(--muted); }
-  .joininfo b { color: var(--text); font-size: 2.8vh; letter-spacing: .15em; }
-  main { flex: 1; position: relative; padding: 0 2vw; min-height: 0; display: flex; flex-direction: column; }
-  footer { display: flex; gap: 1vw; padding: 1.5vh 2vw 2vh; justify-content: center; flex-wrap: wrap; }
+  header { display: flex; align-items: center; gap: 1.6vw; padding: 1.4vh 2vw; }
+  header .wm { font-size: 3vh; }
+  .roundtag { font-weight: 800; font-size: 1.7vh; letter-spacing: .14em; text-transform: uppercase; background: var(--panel2); padding: .6vh 1vw; border-radius: 3vh; }
+  .joininfo { margin-left: auto; font-size: 2.2vh; color: var(--muted); display: flex; align-items: center; gap: 1vw; }
+  .joininfo b { font-family: var(--display); font-weight: 900; color: var(--ink); background: var(--sun); font-size: 2.4vh; letter-spacing: .15em; padding: .4vh .9vw; border-radius: 1vh; }
+  main { flex: 1; position: relative; z-index: 1; padding: 0 2vw; min-height: 0; display: flex; flex-direction: column; }
+  footer { display: flex; gap: 1vw; padding: 2vh 2vw 2vh; justify-content: center; flex-wrap: wrap; }
 
-  .chip { min-width: 12vw; background: var(--panel); border-radius: 1.4vh; padding: 1vh 1.4vw; border-top: .6vh solid var(--c); text-align: center; position: relative; transition: transform .2s, box-shadow .2s; }
-  .chip .n { font-size: 2.2vh; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 16vw; }
-  .chip .s { font-family: 'Bungee'; font-size: 3vh; }
+  /* Score chips */
+  .chip { min-width: 12vw; background: var(--panel); border-radius: 2vh; padding: 1vh 1.4vw 1vh 1vh; border: 1px solid var(--line); display: flex; align-items: center; gap: .8vw; position: relative; transition: transform .25s, box-shadow .25s, background .25s; }
+  .av { width: 5vh; height: 5vh; border-radius: 50%; background: var(--c); color: var(--ink); display: flex; align-items: center; justify-content: center; font-family: var(--display); font-weight: 900; font-size: 2.2vh; flex: none; }
+  .chip .n { font-size: 2vh; font-weight: 600; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 14vw; }
+  .chip .s { font-family: var(--display); font-weight: 900; font-size: 2.8vh; }
   .chip .s.neg { color: var(--bad); }
-  .chip.off { opacity: .45; }
-  .chip.ctrl::after { content: 'PICKING'; position: absolute; top: -1.4vh; left: 50%; transform: translateX(-50%); font-size: 1.3vh; font-weight: 800; background: var(--sun); color: #1a1033; padding: .2vh .8vw; border-radius: 1vh; }
-  .chip.buzzed { transform: translateY(-1.2vh) scale(1.08); box-shadow: 0 0 0 .4vh var(--c), 0 0 4vh var(--c); }
+  .chip.off { opacity: .4; }
+  .chip.ctrl { border: .35vh solid var(--c); }
+  .chip.ctrl::after { content: 'PICKING'; position: absolute; top: -1.3vh; left: 50%; transform: translateX(-50%); font-size: 1.2vh; font-weight: 800; letter-spacing: .12em; background: var(--c); color: var(--ink); padding: .2vh .8vw; border-radius: 1vh; }
+  .chip.buzzed { transform: translateY(-1.2vh) scale(1.08); background: color-mix(in srgb, var(--c) 28%, var(--panel)); border: .35vh solid var(--c); box-shadow: 0 0 4vh var(--c); }
+  .flame { position: absolute; top: -1.6vh; right: -.6vw; font-size: 2.4vh; background: var(--panel2); border-radius: 2vh; padding: .1vh .5vw; font-weight: 800; animation: wiggle 1s ease-in-out infinite alternate; }
+  @keyframes wiggle { from { transform: rotate(-6deg); } to { transform: rotate(6deg) scale(1.08); } }
 
-  /* Board */
-  .board { flex: 1; display: grid; grid-template-columns: repeat(6, 1fr); grid-template-rows: 1.25fr repeat(5, 1fr); gap: .8vh; min-height: 0; }
-  .cat, .tile { border-radius: 1vh; display: flex; align-items: center; justify-content: center; text-align: center; }
-  .cat { background: linear-gradient(160deg, #3a1c71, #24124a); font-family: 'Bungee'; font-size: 2.3vh; padding: .5vh .6vw; line-height: 1.15; text-transform: uppercase; }
-  .tile { background: linear-gradient(160deg, var(--tile1), var(--tile2)); font-family: 'Bungee'; font-size: 5vh; color: var(--sun); cursor: pointer; text-shadow: 0 .4vh 0 rgba(0,0,0,.35); transition: transform .15s, filter .15s; }
-  .tile:hover { filter: brightness(1.2); }
-  .tile.used { background: rgba(255,255,255,.04); color: transparent; cursor: default; text-shadow: none; }
-  .tile.picked { animation: flash .5s ease 2; }
-  @keyframes flash { 50% { filter: brightness(2); transform: scale(1.05); } }
-  .caption { text-align: center; font-size: 2.6vh; padding: 1vh 0; color: var(--muted); }
+  /* Board: one bright color per column, like the Apple TV app */
+  .board { flex: 1; display: grid; grid-template-columns: repeat(6, 1fr); grid-template-rows: 1.25fr repeat(5, 1fr); gap: 1vh; min-height: 0; }
+  .cat, .tile { border-radius: 1.4vh; display: flex; align-items: center; justify-content: center; text-align: center; }
+  .cat { background: var(--panel); border-bottom: .7vh solid var(--col); font-weight: 800; font-size: 2.3vh; padding: .5vh .6vw; line-height: 1.1; text-transform: uppercase; letter-spacing: .03em; }
+  .tile { background: var(--col); font-family: var(--display); font-weight: 900; font-size: 4.6vh; color: var(--ink); cursor: pointer; box-shadow: inset 0 -.6vh 0 rgba(0,0,0,.18); transition: transform .15s, filter .15s; }
+  .tile:hover { filter: brightness(1.1); transform: scale(1.03); }
+  .tile.used { background: rgba(255,255,255,.035); box-shadow: none; color: transparent; cursor: default; transform: none; }
+  .board.enter .tile:not(.used) { animation: deal .45s backwards; animation-delay: calc(var(--d) * 28ms); }
+  @keyframes deal { from { transform: scale(.4) rotateX(80deg); opacity: 0; } }
+  .caption { text-align: center; font-size: 2.6vh; padding: 1.2vh 0 0; color: var(--muted); }
   .caption b { color: var(--text); }
 
   /* Clue */
-  .clue { position: absolute; inset: 0 2vw; border-radius: 2vh; background: radial-gradient(circle at 30% 20%, #4b23a0, #1d0e46 70%); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 4vh 6vw; text-align: center; animation: zoom .35s ease; }
-  @keyframes zoom { from { transform: scale(.6); opacity: 0; } }
-  .clue .meta { position: absolute; top: 2.5vh; left: 3vw; right: 3vw; display: flex; justify-content: space-between; font-family: 'Bungee'; font-size: 2.6vh; color: var(--muted); }
-  .clue .meta .v { color: var(--sun); }
-  .clue .q { font-size: clamp(3vh, 6vh, 7vh); font-weight: 800; line-height: 1.25; max-width: 75vw; text-wrap: balance; }
-  .clue .status { margin-top: 4vh; font-size: 3.2vh; font-weight: 600; min-height: 4.5vh; }
-  .clue .status.go { color: var(--good); font-family: 'Bungee'; font-size: 4.2vh; animation: pulse .7s infinite alternate; }
+  .clue { position: absolute; inset: 0 2vw; border-radius: 3vh; background: var(--panel); border: .6vh solid var(--accent); display: flex; flex-direction: column; padding: 3.5vh 4vw; animation: zoom .35s ease; }
+  @keyframes zoom { from { transform: scale(.85); opacity: 0; } }
+  .clue .meta { display: flex; justify-content: space-between; align-items: center; }
+  .clue .meta .cname { background: var(--accent); color: var(--ink); font-weight: 800; letter-spacing: .12em; text-transform: uppercase; font-size: 2.4vh; padding: .8vh 1.6vw; border-radius: 4vh; }
+  .clue .meta .v { font-family: var(--display); font-weight: 900; font-size: 3.6vh; color: var(--accent); }
+  .clue .q { flex: 1; display: flex; align-items: center; font-size: 6.2vh; font-weight: 800; line-height: 1.2; max-width: 80vw; text-wrap: balance; }
+  .clue .bottom { display: flex; align-items: flex-end; justify-content: space-between; gap: 2vw; min-height: 14vh; }
+  .status { font-size: 3.2vh; font-weight: 600; }
+  .status.wait { color: var(--muted); }
+  .go { display: inline-flex; align-items: center; gap: 1vw; background: var(--good); color: var(--ink); font-family: var(--display); font-weight: 900; font-size: 4.4vh; padding: 1.4vh 2.4vw; border-radius: 6vh; animation: pulse .6s infinite alternate; }
   @keyframes pulse { to { transform: scale(1.06); } }
-  .clue .clock { font-family: 'Bungee'; font-size: 5vh; color: var(--sun); margin-left: 1.2vw; vertical-align: middle; }
-  .clue .ans { margin-top: 3vh; font-family: 'Bungee'; font-size: 5.5vh; color: var(--sun); animation: zoom .3s ease; }
-  .result { margin-top: 2vh; font-size: 3vh; padding: 1vh 2vw; border-radius: 1.2vh; display: inline-block; }
-  .result.ok { background: rgba(6,214,160,.18); color: var(--good); }
-  .result.no { background: rgba(255,93,93,.15); color: var(--bad); }
-  .timer { position: absolute; bottom: 0; left: 0; right: 0; height: 1.2vh; background: rgba(255,255,255,.08); border-radius: 0 0 2vh 2vh; overflow: hidden; }
-  .timer i { display: block; height: 100%; background: linear-gradient(90deg, var(--hot), var(--sun)); transform-origin: left; }
+  .callout { display: flex; align-items: center; gap: 1.4vw; }
+  .callout .av { width: 10vh; height: 10vh; font-size: 4.4vh; }
+  .callout .who { font-family: var(--display); font-weight: 900; font-size: 5vh; text-transform: uppercase; color: var(--c); line-height: 1.05; }
+  .callout .line { font-size: 3vh; font-weight: 600; }
+  .speed { display: inline-block; margin-left: .6vw; font-family: var(--display); font-weight: 700; font-size: 2.2vh; color: var(--ink); background: var(--sun); padding: .3vh .8vw; border-radius: 2vh; vertical-align: middle; }
+  .buzzorder { display: flex; flex-wrap: wrap; gap: .6vw; margin-top: 1.4vh; align-items: center; }
+  .buzzorder .lbl { font-weight: 800; letter-spacing: .14em; text-transform: uppercase; font-size: 1.6vh; color: var(--muted); margin-right: .4vw; }
+  .buzzorder span.b { display: inline-flex; align-items: center; gap: .5vw; background: var(--panel2); border-radius: 4vh; padding: .4vh 1vw .4vh .4vh; font-size: 2.1vh; font-weight: 600; animation: zoom .25s ease; }
+  .buzzorder span.b .av { width: 3.4vh; height: 3.4vh; font-size: 1.5vh; }
+  .buzzorder span.b em { font-style: normal; font-family: var(--display); font-weight: 700; font-size: 1.9vh; }
+  .buzzorder span.b.first { background: var(--sun); color: var(--ink); }
+  .buzzorder span.b small { color: var(--muted); font-size: 1.6vh; }
+  .eyebrow { font-weight: 800; letter-spacing: .16em; text-transform: uppercase; font-size: 2vh; color: var(--muted); }
+  .ans { font-family: var(--display); font-weight: 900; font-size: 5.6vh; color: var(--sun); animation: zoom .3s ease; line-height: 1.1; }
+  .result { margin-top: 1.4vh; font-size: 2.8vh; font-weight: 600; padding: 1vh 1.6vw; border-radius: 4vh; display: inline-block; }
+  .result.ok { background: rgba(61,220,151,.15); color: var(--good); }
+  .result.no { background: rgba(255,90,95,.15); color: var(--bad); }
+  .hot { margin-top: 1.2vh; font-size: 3vh; font-weight: 800; color: var(--c1); animation: zoom .4s ease; }
+  .ring { width: 14vh; height: 14vh; position: relative; flex: none; }
+  .ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .ring circle { fill: none; stroke-width: 10; }
+  .ring .bg { stroke: var(--panel2); }
+  .ring .fg { stroke: var(--accent); stroke-linecap: round; }
+  .ring span { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: var(--display); font-weight: 900; font-size: 4.4vh; }
 
-  .splash { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 2vh; }
-  .big { font-family: 'Bungee'; font-size: 11vh; line-height: 1; background: linear-gradient(90deg, var(--hot), var(--sun), var(--cool)); -webkit-background-clip: text; background-clip: text; color: transparent; animation: zoom .5s ease; }
-  .sub { font-size: 3.2vh; color: var(--muted); }
+  .splash { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 2vh; position: relative; }
+  .big { font-family: var(--display); font-weight: 900; font-size: 10vh; line-height: 1; animation: zoom .5s ease; }
+  .sub { font-size: 3vh; color: var(--muted); }
   .sub b { color: var(--text); }
+  .ddbox { position: absolute; inset: 0 2vw; border-radius: 3vh; background: var(--panel); border: .6vh solid var(--sun); overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2.4vh; }
+  .ddbox::before { content: ''; position: absolute; inset: -60%; background: repeating-conic-gradient(rgba(255,210,63,.09) 0 12.85deg, transparent 12.85deg 25.7deg); animation: spin 40s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .ddbox > * { position: relative; }
+  .pill { font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--ink); background: var(--col, var(--sun)); padding: .8vh 1.6vw; border-radius: 4vh; font-size: 2.4vh; }
 
   /* Lobby */
-  .lobby { flex: 1; display: grid; grid-template-columns: 1.1fr 1fr; gap: 4vw; align-items: center; }
-  .lobby .title { font-family: 'Bungee'; font-size: 12vh; line-height: .95; background: linear-gradient(120deg, var(--hot), var(--sun) 60%, var(--cool)); -webkit-background-clip: text; background-clip: text; color: transparent; }
-  .lobby .tag { font-size: 3vh; color: var(--muted); margin: 2vh 0 4vh; }
-  .steps { font-size: 2.6vh; line-height: 1.8; }
+  .lobby { flex: 1; display: grid; grid-template-columns: 1.15fr 1fr; gap: 4vw; align-items: center; }
+  .lobby .wm { font-size: 13vh; }
+  .lobby .tag { font-size: 2.8vh; color: var(--muted); margin: 2vh 0 3vh; }
+  .steps { font-size: 2.4vh; line-height: 1.7; }
   .steps b { color: var(--sun); }
-  .lobby.building .title { font-size: 7vh; }
-  .lobby.building .tag { margin: 1vh 0 2vh; }
-  .lobby.building .steps { font-size: 2.2vh; line-height: 1.5; }
-  .joinbox { background: var(--panel); border-radius: 3vh; padding: 4vh; text-align: center; }
-  #qr { background: #fff; padding: 2vh; border-radius: 2vh; display: inline-block; }
-  #qr svg { width: 34vh; height: 34vh; display: block; }
-  .code { font-family: 'Bungee'; font-size: 9vh; letter-spacing: .2em; margin-top: 1vh; color: var(--sun); }
+  .lobby.building .wm { font-size: 8vh; }
+  .lobby.building .tag { display: none; }
+  .lobby.building .steps { font-size: 2vh; line-height: 1.5; }
+  .joinbox { background: var(--panel); border: 1px solid var(--line); border-radius: 4vh; padding: 4vh; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 1.6vh; }
+  #qr { background: #fff; padding: 2vh; border-radius: 2.4vh; display: inline-block; }
+  #qr svg { width: 32vh; height: 32vh; display: block; }
+  .codetiles { display: flex; gap: 1vh; }
+  .codetiles span { width: 10vh; height: 10vh; border-radius: 2vh; display: flex; align-items: center; justify-content: center; font-family: var(--display); font-weight: 900; font-size: 5.6vh; color: var(--ink); }
   .url { font-size: 2.3vh; color: var(--muted); word-break: break-all; }
-  .roster { display: flex; flex-wrap: wrap; gap: 1vh; margin-top: 3vh; }
-  .roster span { background: var(--c); color: #160b2e; font-weight: 800; padding: .8vh 1.6vw; border-radius: 4vh; font-size: 2.4vh; animation: zoom .3s ease; }
+  .roster { display: flex; flex-wrap: wrap; gap: 1vh; margin-top: 2.4vh; }
+  .roster > span { display: inline-flex; align-items: center; gap: .6vw; background: var(--panel2); font-weight: 800; padding: .6vh 1.4vw .6vh .6vh; border-radius: 4vh; font-size: 2.4vh; animation: zoom .3s ease; }
+  .roster > span .av { width: 4vh; height: 4vh; font-size: 1.8vh; }
 
-  .packs { margin-top: 3vh; display: flex; flex-wrap: wrap; gap: .8vh; }
-  .packlabel { width: 100%; font-size: 1.9vh; color: var(--muted); }
-  .pack { font-size: 2vh; padding: .8vh 1.2vw; background: var(--panel); color: var(--muted); border: 1px solid rgba(255,255,255,.15); font-weight: 600; }
-  .pack.on { background: var(--cool); color: #10082a; border-color: transparent; font-weight: 800; }
+  .packs { margin-top: 2.4vh; display: flex; flex-wrap: wrap; gap: .8vh; }
+  .packlabel { width: 100%; font-size: 1.8vh; color: var(--muted); font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+  .pack { font-size: 1.9vh; padding: .8vh 1.2vw; background: var(--panel); color: var(--muted); border: 1px solid var(--line); font-weight: 600; }
+  .pack.on { background: var(--cool); color: var(--ink); border-color: transparent; font-weight: 800; }
   .pack small { opacity: .7; margin-left: .3vw; }
   .pack.mini { font-size: 1.6vh; padding: .5vh .8vw; }
   .rlabel { font-size: 1.6vh; color: var(--muted); font-weight: 700; align-self: center; }
-  .controls { position: fixed; right: 1.5vw; bottom: 13vh; display: flex; flex-direction: column; gap: .8vh; opacity: .25; transition: opacity .2s; z-index: 5; }
+  .controls { position: fixed; right: 1.5vw; bottom: 16vh; display: flex; flex-direction: column; gap: .8vh; opacity: .25; transition: opacity .2s; z-index: 5; }
   .controls:hover { opacity: 1; }
   .controls button { font-size: 1.8vh; padding: .8vh 1.2vw; }
 
-  .standings { display: flex; flex-direction: column; gap: 1.2vh; min-width: 40vw; }
-  .standings .row { display: flex; justify-content: space-between; align-items: center; background: var(--panel); border-left: .8vh solid var(--c); padding: 1.4vh 2vw; border-radius: 1.2vh; font-size: 3.2vh; }
-  .standings .row b { font-family: 'Bungee'; }
+  .standings { display: flex; flex-direction: column; gap: 1.1vh; min-width: 44vw; }
+  .standings .row { display: flex; align-items: center; gap: 1.2vw; background: linear-gradient(90deg, color-mix(in srgb, var(--c) 28%, transparent) var(--w), var(--panel) var(--w)); padding: 1.1vh 2vw 1.1vh 1.2vw; border-radius: 2vh; font-size: 3vh; font-weight: 600; }
+  .standings .row .rank { color: var(--muted); font-family: var(--display); font-weight: 700; width: 3vw; }
+  .standings .row b { font-family: var(--display); font-weight: 900; margin-left: auto; }
   .reveals { display: grid; grid-template-columns: repeat(auto-fit, minmax(22vw, 1fr)); gap: 2vh; width: 90%; }
-  .rcard { background: var(--panel); border-top: .8vh solid var(--c); border-radius: 1.6vh; padding: 2vh; animation: zoom .35s ease; }
-  .rcard .who { font-size: 2.6vh; font-weight: 800; }
-  .rcard .what { font-size: 3.4vh; margin: 1vh 0; }
-  .rcard .wager { font-size: 2.4vh; color: var(--muted); }
-  .rcard.ok .what { color: var(--good); }
-  .rcard.no .what { color: var(--bad); text-decoration: line-through; }
-  .soundbtn { position: fixed; left: 1.5vw; bottom: 1.5vh; font-size: 1.6vh; opacity: .5; }
-  .conn { position: fixed; top: 0; left: 50%; transform: translateX(-50%); background: var(--bad); color: #fff; padding: .5vh 2vw; border-radius: 0 0 1vh 1vh; font-weight: 600; display: none; }
+  .rcard { background: var(--panel); border: .4vh solid var(--rc); border-radius: 2.4vh; padding: 2vh; animation: zoom .35s ease; text-align: left; }
+  .rcard .who { font-size: 2.6vh; font-weight: 800; display: flex; align-items: center; gap: .6vw; }
+  .rcard .who .av { width: 3.6vh; height: 3.6vh; font-size: 1.6vh; }
+  .rcard .what { font-size: 3.2vh; margin: 1vh 0; font-weight: 600; color: var(--rc); }
+  .rcard .wager { font-size: 2.2vh; color: var(--muted); }
+  .rcard.no .what { text-decoration: line-through; }
+
+  .awards { display: flex; gap: 1.6vw; flex-wrap: wrap; justify-content: center; }
+  .award { background: var(--panel); border: 1px solid var(--line); border-top: .6vh solid var(--c); border-radius: 2vh; padding: 1.4vh 1.6vw; min-width: 15vw; animation: zoom .5s ease backwards; animation-delay: calc(var(--i) * 250ms + 400ms); }
+  .award .t { font-weight: 800; letter-spacing: .12em; text-transform: uppercase; font-size: 1.7vh; color: var(--sun); }
+  .award .p { font-family: var(--display); font-weight: 900; font-size: 3vh; color: var(--c); margin: .4vh 0; }
+  .award .d { font-size: 2vh; color: var(--muted); }
+  .confetti { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 0; }
+  .confetti i { position: absolute; top: -4vh; width: 1vh; height: 1.8vh; animation: fall linear infinite; }
+  @keyframes fall { to { transform: translateY(110vh) rotate(720deg); } }
+
+  /* Emoji reactions from phones float up the screen */
+  .reacts { position: fixed; inset: 0; pointer-events: none; z-index: 6; overflow: hidden; }
+  .reacts div { position: absolute; bottom: 14vh; display: flex; flex-direction: column; align-items: center; animation: floatup 3.4s ease-out forwards; }
+  .reacts div span { font-size: 8vh; line-height: 1; }
+  .reacts div small { font-size: 1.8vh; font-weight: 800; color: var(--ink); background: var(--c); padding: .2vh .8vw; border-radius: 2vh; margin-top: .4vh; }
+  @keyframes floatup { 0% { transform: translateY(0) scale(.4); opacity: 0; } 12% { transform: translateY(-4vh) scale(1.15); opacity: 1; } 75% { opacity: 1; } 100% { transform: translateY(-62vh) scale(1); opacity: 0; } }
+
+  .audiobar { position: fixed; right: 1.5vw; bottom: 1.4vh; display: flex; gap: .6vw; z-index: 7; }
+  .audiobar button { font-size: 1.6vh; padding: .6vh 1vw; opacity: .6; }
+  .audiobar button:hover { opacity: 1; }
+  .audiobar button.offbtn { text-decoration: line-through; opacity: .45; }
+  .unlock { position: fixed; left: 50%; top: 8vh; transform: translateX(-50%); z-index: 8; font-size: 2.2vh; padding: 1.2vh 2vw; border-radius: 4vh; box-shadow: 0 1vh 4vh rgba(0,0,0,.5); animation: pulse .8s infinite alternate; display: none; }
+  .conn { position: fixed; top: 0; left: 50%; transform: translateX(-50%); background: var(--bad); color: #fff; padding: .5vh 2vw; border-radius: 0 0 1vh 1vh; font-weight: 600; display: none; z-index: 9; }
 </style>
 </head>
 <body>
 <div class="conn" id="conn">Reconnecting to the game server...</div>
 <header>
-  <div class="logo">BUZZWORTHY</div>
+  <div class="wm"><i>BUZZ</i>WORTHY</div>
+  <div class="roundtag" id="roundtag" style="display:none"></div>
   <div class="joininfo" id="joininfo"></div>
 </header>
 <main id="main"></main>
 <footer id="footer"></footer>
 <div class="controls" id="controls"></div>
-<button class="soundbtn ghost" id="soundbtn">Sound: off (click to enable)</button>
+<div class="reacts" id="reacts"></div>
+<div class="audiobar">
+  <button class="ghost" id="fxbtn" title="Sound effects (F)">&#128266; Sounds</button>
+  <button class="ghost" id="musicbtn" title="Theme music (M)">&#127925; Music</button>
+</div>
+<button class="unlock" id="unlock">&#127925; Click anywhere to turn on the music and sounds</button>
 
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 <script src="/config.js"></script>
@@ -121,8 +182,14 @@
 <script src="/common.js"></script>
 <script>
 let S = null, prev = null, joinUrl = '', room = null, tvKey = null;
+let lastReact = 0, themeTimer = null, boardKey = '';
+const COLS = ['var(--c0)', 'var(--c1)', 'var(--c2)', 'var(--c3)', 'var(--c4)', 'var(--c5)'];
 
 async function init() {
+  Sound.init();
+  audioButtons();
+  // Some browsers allow sound straight away. Otherwise the first click turns it on.
+  Sound.unlock().then((ok) => { if (!ok) document.getElementById('unlock').style.display = 'block'; });
   const params = new URLSearchParams(location.search);
   room = (params.get('room') || '').toUpperCase();
   tvKey = room && localStorage.getItem('bw-tv-' + room);
@@ -142,44 +209,95 @@ async function init() {
   joinUrl = `${proto}//${host}/play?room=${room}`;
   BW.connect({ room, tvKey }, onState, (ok) => { document.getElementById('conn').style.display = ok ? 'none' : 'block'; });
   BW.startTimerLoop(() => S);
+  ringLoop();
 }
+
+function unlockAudio() {
+  Sound.unlock().then((ok) => { if (ok) document.getElementById('unlock').style.display = 'none'; });
+}
+document.addEventListener('pointerdown', unlockAudio);
+document.addEventListener('keydown', unlockAudio);
+
+function audioButtons() {
+  const fx = document.getElementById('fxbtn'), mu = document.getElementById('musicbtn');
+  fx.classList.toggle('offbtn', !Sound.fx);
+  mu.classList.toggle('offbtn', !Sound.musicOn);
+  fx.innerHTML = (Sound.fx ? '&#128266;' : '&#128263;') + ' Sounds ' + (Sound.fx ? 'on' : 'off');
+  mu.innerHTML = '&#127925; Music ' + (Sound.musicOn ? 'on' : 'off');
+}
+document.getElementById('fxbtn').onclick = () => { Sound.setFx(!Sound.fx); audioButtons(); };
+document.getElementById('musicbtn').onclick = () => { Sound.setMusic(!Sound.musicOn); audioButtons(); };
 
 function act(type, extra) { return BW.post('/api/act', { room, tvKey, type, ...extra }); }
 
 function player(id) { return S.players.find((p) => p.id === id); }
 function pname(id) { const p = player(id); return p ? BW.esc(p.name) : 'Someone'; }
+function initial(name) { return BW.esc(String(name || '?').trim().slice(0, 1).toUpperCase()); }
+function av(p) { return `<span class="av" style="--c:${p ? p.color : '#fff'}">${initial(p && p.name)}</span>`; }
 
 function onState(s) {
   prev = S; S = s;
   playSounds(prev, S);
+  pickMusic(prev, S);
+  showReactions(S);
   render();
 }
 
 function playSounds(a, b) {
   if (!a) return;
   if (a.phase !== b.phase) {
-    if (b.phase === 'reading') Sound.pick();
-    if (b.phase === 'open' && a.phase === 'reading') Sound.open();
-    if (b.phase === 'answering') Sound.buzz();
-    if (b.phase === 'dd-wager') Sound.dd();
-    if (b.phase === 'final-wager') Sound.dd();
-    if (b.phase === 'gameover') Sound.fanfare();
-    if (b.phase === 'reveal' && (!b.lastResult || !b.lastResult.correct) && a.phase === 'open') Sound.timeout();
+    if (a.phase === 'final-answer') Sound.play('timeout');
+    if (b.phase === 'board' && (a.phase === 'lobby' || a.phase === 'round-end')) Sound.play('board');
+    if (b.phase === 'reading') Sound.play('pick');
+    if (b.phase === 'open' && a.phase === 'reading') Sound.play('open');
+    if (b.phase === 'answering') Sound.play('buzz');
+    if (b.phase === 'dd-wager' || b.phase === 'final-wager') Sound.play('dd');
+    if (b.phase === 'gameover') Sound.play('fanfare');
+    if (b.phase === 'reveal' && (!b.lastResult || !b.lastResult.correct) && a.phase === 'open') Sound.play('timeout');
   }
   const ra = a.lastResult, rb = b.lastResult;
   if (rb && (!ra || ra.pid !== rb.pid || ra.answer !== rb.answer || ra.correct !== rb.correct) && ['open', 'reveal'].includes(b.phase)) {
-    rb.correct ? Sound.correct() : Sound.wrong();
+    Sound.play(rb.correct ? 'correct' : 'wrong');
   }
   if (b.final && a.final && b.final.revealIndex > a.final.revealIndex) {
     const r = b.final.reveals[b.final.revealIndex];
-    r && (r.correct ? Sound.correct() : Sound.wrong());
+    r && Sound.play(r.correct ? 'correct' : 'wrong');
+  }
+}
+
+// The theme plays in the lobby and comes back after the champion fanfare.
+// The final round gets the thinking music.
+function pickMusic(a, b) {
+  if (b.phase === 'lobby') { clearTimeout(themeTimer); themeTimer = null; Sound.music('theme'); }
+  else if (b.phase === 'final-answer') Sound.music('think');
+  else if (b.phase === 'gameover') {
+    if (!a || a.phase !== 'gameover') { Sound.music(null); clearTimeout(themeTimer); themeTimer = setTimeout(() => S.phase === 'gameover' && Sound.music('theme'), 5500); }
+  } else { clearTimeout(themeTimer); Sound.music(null); }
+}
+
+function showReactions(s) {
+  const box = document.getElementById('reacts');
+  for (const r of s.reactions || []) {
+    if (r.id <= lastReact) continue;
+    lastReact = r.id;
+    const p = player(r.pid);
+    const el = document.createElement('div');
+    el.style.left = (8 + Math.random() * 80) + 'vw';
+    el.style.setProperty('--c', p ? p.color : '#fff');
+    el.innerHTML = `<span>${BW.esc(r.e)}</span><small>${p ? BW.esc(p.name) : ''}</small>`;
+    box.appendChild(el);
+    setTimeout(() => el.remove(), 3500);
   }
 }
 
 function render() {
   const s = S;
   document.getElementById('joininfo').innerHTML = s.phase === 'lobby' ? '' :
-    `Join: <span>${BW.esc(joinUrl.replace(/^https?:\/\//, ''))}</span> &nbsp; Room <b>${s.code}</b>`;
+    `Join at <span>${BW.esc(joinUrl.replace(/^https?:\/\//, '').replace(/\?.*$/, ''))}</span> <b>${s.code}</b>`;
+  const tag = document.getElementById('roundtag');
+  const label = { 1: 'Round 1', 2: 'Round 2 &middot; Double Up', 3: 'Final Showdown' }[s.round];
+  tag.style.display = label && s.phase !== 'lobby' && s.phase !== 'gameover' ? '' : 'none';
+  tag.innerHTML = label || '';
   renderFooter();
   renderControls();
   const m = document.getElementById('main');
@@ -188,17 +306,19 @@ function render() {
     reveal: renderClue, 'dd-wager': renderDDWager, 'dd-answer': renderClue, 'round-end': renderRoundEnd,
     'final-wager': renderFinalWager, 'final-answer': renderFinalAnswer, 'final-reveal': renderFinalReveal, gameover: renderGameOver,
   }[s.phase];
+  if (s.phase !== 'gameover') document.querySelectorAll('.confetti').forEach((c) => c.remove());
   fn && fn(m);
 }
 
 function renderFooter() {
   const f = document.getElementById('footer');
-  if (S.phase === 'lobby') { f.innerHTML = ''; return; }
+  if (S.phase === 'lobby' || S.phase === 'round-end' || S.phase === 'gameover') { f.innerHTML = ''; return; }
   const buzzed = S.clue && S.clue.buzzedId;
   f.innerHTML = S.players.map((p) => `
     <div class="chip ${p.connected ? '' : 'off'} ${S.phase === 'board' && p.id === S.controllerId ? 'ctrl' : ''} ${buzzed === p.id && S.phase === 'answering' ? 'buzzed' : ''}" style="--c:${p.color}">
-      <div class="n">${BW.esc(p.name)}</div>
-      <div class="s ${p.score < 0 ? 'neg' : ''}">${BW.money(p.score)}</div>
+      ${av(p)}
+      <div><div class="n">${BW.esc(p.name)}</div><div class="s ${p.score < 0 ? 'neg' : ''}">${BW.money(p.score)}</div></div>
+      ${p.streak >= (S.hotStreak || 3) ? `<span class="flame" title="${p.streak} right in a row">&#128293;${p.streak}</span>` : ''}
     </div>`).join('');
 }
 
@@ -225,6 +345,7 @@ document.addEventListener('click', (e) => {
   if (t && S.phase === 'board') { const [ci, ri] = t.dataset.pick.split(','); act('pick', { ci, ri }); }
 });
 document.addEventListener('keydown', (e) => {
+  if (!S) return;
   const k = e.key.toLowerCase();
   if (k === 's' && S.phase === 'lobby') act('start');
   if (k === 'k') act('skip');
@@ -232,19 +353,17 @@ document.addEventListener('keydown', (e) => {
   if (k === 'c') act('judge', { correct: true });
   if (k === 'w') act('judge', { correct: false });
   if (k === 'o') act('override');
+  if (k === 'm') { Sound.setMusic(!Sound.musicOn); audioButtons(); }
+  if (k === 'f') { Sound.setFx(!Sound.fx); audioButtons(); }
   if (k === 'n' || k === 'enter' || k === ' ') act('advance');
 });
-document.getElementById('soundbtn').onclick = (e) => {
-  Sound.enable();
-  e.target.textContent = 'Sound: on';
-};
 
 function renderLobby(m) {
   if (!m.querySelector('.lobby')) {
     m.innerHTML = `
       <div class="lobby">
         <div>
-          <div class="title">BUZZ<br>WORTHY</div>
+          <div class="wm"><i>BUZZ</i><br>WORTHY</div>
           <div class="tag">The trivia showdown where your phone is the buzzer.</div>
           <div class="steps">
             <div><b>1.</b> Scan the code with your phone camera</div>
@@ -255,9 +374,10 @@ function renderLobby(m) {
           <div class="packs" id="packs"></div>
         </div>
         <div class="joinbox">
+          <div class="eyebrow">Scan to join</div>
           <div id="qr"></div>
-          <div class="code">${S.code}</div>
-          <div class="url">${BW.esc(joinUrl)}</div>
+          <div class="url">or go to <b>${BW.esc(joinUrl.replace(/^https?:\/\//, '').replace(/\?.*$/, ''))}</b> and enter</div>
+          <div class="codetiles">${[...S.code].map((ch, i) => `<span style="background:${COLS[[0, 2, 3, 4][i % 4]]}">${ch}</span>`).join('')}</div>
         </div>
       </div>`;
     try {
@@ -268,12 +388,12 @@ function renderLobby(m) {
     } catch (e) { document.getElementById('qr').style.display = 'none'; }
   }
   document.getElementById('hostline').innerHTML = S.hostMode
-    ? `<b>3.</b> Host: <span style="color:var(--sun)">${BW.esc(S.hostName)}</span> 🎤 Players answer out loud${S.answerTime ? ` within ${S.answerTime} seconds` : ''}.`
+    ? `<b>3.</b> Host: <span style="color:var(--sun)">${BW.esc(S.hostName)}</span> &#127908; Players answer out loud${S.answerTime ? ` within ${S.answerTime} seconds` : ''}.`
     : '<b>3.</b> Want a host? They tap <i>Join as the host</i>. Otherwise players type answers.';
   m.querySelector('.lobby').classList.toggle('building', !!S.draft);
   document.getElementById('packs').innerHTML = eraRow() + (S.draft ? draftHtml() : packsHtml());
   document.getElementById('roster').innerHTML = S.players.length
-    ? S.players.map((p) => `<span style="--c:${p.color}">${BW.esc(p.name)}${p.id === S.captainId ? ' ★' : ''}</span>`).join('')
+    ? S.players.map((p) => `<span>${av(p)}${BW.esc(p.name)}${p.id === S.captainId && !S.hostMode ? ' &#9733;' : ''}</span>`).join('')
     : '<div class="sub">Waiting for players...</div>';
 }
 
@@ -303,95 +423,143 @@ function draftHtml() {
 }
 
 function renderBoard(m) {
-  const picked = prev && prev.clue;
+  // Deal the tiles in with a little animation when a new round's board first appears.
+  const key = S.round + ':' + S.board.map((c) => c.name).join('|');
+  const enter = key !== boardKey;
+  boardKey = key;
   m.innerHTML = `
-    <div class="board">
-      ${S.board.map((c) => `<div class="cat">${BW.esc(c.name)}</div>`).join('')}
+    <div class="board ${enter ? 'enter' : ''}">
+      ${S.board.map((c, ci) => `<div class="cat" style="--col:${COLS[ci]}">${BW.esc(c.name)}</div>`).join('')}
       ${[0, 1, 2, 3, 4].map((ri) => S.board.map((c, ci) => {
         const cl = c.clues[ri];
-        return `<div class="tile ${cl.used ? 'used' : ''}" data-pick="${ci},${ri}">${cl.used ? '' : '$' + cl.value}</div>`;
+        return `<div class="tile ${cl.used ? 'used' : ''}" style="--col:${COLS[ci]};--d:${ri * 6 + ci}" data-pick="${ci},${ri}">${cl.used ? '' : '$' + cl.value}</div>`;
       }).join('')).join('')}
     </div>
-    <div class="caption"><b>${pname(S.controllerId)}</b>, pick a clue on your phone. Round ${S.round} of 2.</div>`;
+    <div class="caption"><b>${pname(S.controllerId)}</b>, pick a clue on your phone.</div>`;
 }
 
 function resultLine() {
   const r = S.lastResult;
   if (!r) return '';
   const amt = BW.money(r.delta);
-  return `<div class="result ${r.correct ? 'ok' : 'no'}">${pname(r.pid)}${r.answer == null ? '' : `: "${BW.esc(r.answer)}"`} ${r.correct ? '&#10003; +' + amt : '&#10007; -' + amt}${r.overridden ? ' (ruling flipped)' : ''}</div>`;
+  return `<div class="result ${r.correct ? 'ok' : 'no'}">${r.correct ? '&#10003;' : '&#10007;'} ${pname(r.pid)}${r.answer == null ? '' : ` said "${BW.esc(r.answer)}"`} &nbsp;${r.correct ? '+' : '-'}${amt}${r.overridden ? ' (ruling flipped)' : ''}</div>`;
+}
+
+function hotLine() {
+  const r = S.lastResult;
+  if (!r || !r.correct || !(r.streak >= (S.hotStreak || 3))) return '';
+  return `<div class="hot">&#128293; ${pname(r.pid)} is on fire! ${r.streak} in a row</div>`;
+}
+
+function ring() {
+  return `<div class="ring"><svg viewBox="0 0 100 100"><circle class="bg" cx="50" cy="50" r="44"/><circle class="fg" cx="50" cy="50" r="44" pathLength="100" stroke-dasharray="100" data-ring data-total="${S.duration}"/></svg><span data-timer-text data-zero="${S.hostMode && S.phase === 'answering' ? 'TIME' : '0'}"></span></div>`;
+}
+
+// Keeps the countdown rings in step with the clock.
+function ringLoop() {
+  const tick = () => {
+    document.querySelectorAll('[data-ring]').forEach((el) => {
+      const total = Number(el.dataset.total) || 1;
+      const left = BW.remaining(S);
+      const frac = left == null ? 0 : Math.min(1, left / total);
+      el.style.strokeDashoffset = String(100 - frac * 100);
+      el.style.stroke = left != null && left < 4000 ? 'var(--c0)' : '';
+    });
+    requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+
+// Everyone who buzzed on this clue, fastest first, with their time.
+function buzzOrder(c) {
+  const list = c.buzzes || [];
+  if (!list.length) return '';
+  const best = list[0].ms;
+  return `<div class="buzzorder"><span class="lbl">Buzz times</span>${list.map((b, i) => `<span class="b ${i === 0 ? 'first' : ''}">${av(player(b.pid))}${pname(b.pid)} <em>${(b.ms / 1000).toFixed(2)}s</em>${i ? `<small>+${((b.ms - best) / 1000).toFixed(2)}</small>` : ''}</span>`).join('')}</div>`;
+}
+
+function callout(p, line) {
+  return `<div class="callout" style="--c:${p ? p.color : '#fff'}">${av(p)}<div><div class="who">${p ? BW.esc(p.name) : 'Someone'}</div><div class="line">${line}</div></div></div>`;
 }
 
 function renderClue(m) {
   const c = S.clue;
+  const buzzer = S.phase === 'answering' ? player(c.buzzedId) : null;
+  const accent = buzzer ? buzzer.color : COLS[c.ci];
   let status = '';
-  if (S.phase === 'reading') status = S.hostMode ? `<div class="status">${BW.esc(S.hostName || 'The host')} is reading the clue...</div>` : '<div class="status">Get ready...</div>';
-  if (S.phase === 'open') status = `<div class="status go">BUZZ IN!</div>${resultLine()}`;
-  if (S.phase === 'answering') status = S.hostMode
-    ? `<div class="status"><b style="color:${player(c.buzzedId)?.color}">${pname(c.buzzedId)}</b> buzzed in! Say your answer!${S.deadline ? ' <span class="clock" data-timer-text data-zero="Time\'s up!"></span>' : ''}</div>`
-    : `<div class="status"><b style="color:${player(c.buzzedId)?.color}">${pname(c.buzzedId)}</b> buzzed in! Answering... <span data-timer-text></span></div>`;
-  if (S.phase === 'dd-answer') status = `<div class="status"><b>${pname(S.controllerId)}</b> wagered <b>${BW.money(c.wager)}</b>. Answering... <span data-timer-text></span></div>`;
-  if (S.phase === 'reveal') status = `<div class="ans">${BW.esc(c.answer)}</div>${S.lastResult ? resultLine() : '<div class="sub">Nobody buzzed in.</div>'}`;
+  if (S.phase === 'reading') status = `<div class="status wait">${S.hostMode ? BW.esc(S.hostName || 'The host') + ' is reading the clue. Thumbs ready.' : 'Get ready to buzz...'}</div>`;
+  if (S.phase === 'open') status = `<div>${resultLine()}<div style="margin-top:1.4vh"><span class="go">&#128276; BUZZ IN!</span></div></div>`;
+  if (S.phase === 'answering') {
+    const speed = c.buzzMs != null ? `<span class="speed">${(c.buzzMs / 1000).toFixed(2)}s</span>` : '';
+    status = `<div>${callout(buzzer, (S.hostMode ? 'buzzed in. Say your answer!' : 'buzzed in and is answering...') + speed)}${buzzOrder(c)}</div>`;
+  }
+  if (S.phase === 'dd-answer') status = callout(player(S.controllerId), `wagered ${BW.money(c.wager)} and is answering...`);
+  if (S.phase === 'reveal') status = `<div><div class="eyebrow">The answer</div><div class="ans">${BW.esc(c.answer)}</div>${S.lastResult ? resultLine() : '<div class="sub" style="margin-top:1vh">Nobody buzzed in.</div>'}${hotLine()}${buzzOrder(c)}</div>`;
   const showTimer = S.hostMode ? S.phase === 'open' || (S.phase === 'answering' && !!S.deadline) : ['open', 'answering', 'dd-answer'].includes(S.phase);
   m.innerHTML = `
-    <div class="clue">
-      <div class="meta"><span>${BW.esc(c.cat)}</span><span class="v">${c.dd ? 'DAILY DOUBLE' : '$' + c.value}</span></div>
+    <div class="clue" style="--accent:${accent}">
+      <div class="meta"><span class="cname">${BW.esc(c.cat)}</span><span class="v">${c.dd ? 'DAILY DOUBLE' : '$' + c.value}</span></div>
       <div class="q">${BW.esc(c.q)}</div>
-      ${status}
-      ${showTimer ? `<div class="timer"><i data-timer-bar data-total="${S.duration}"></i></div>` : ''}
+      <div class="bottom">${status}${showTimer ? ring() : ''}</div>
     </div>`;
 }
 
 function renderDDWager(m) {
-  m.innerHTML = `<div class="splash">
-    <div class="big">DAILY<br>DOUBLE!</div>
-    <div class="sub">${BW.esc(S.clue.cat)}</div>
-    <div class="sub"><b>${pname(S.controllerId)}</b> is choosing a wager...</div>
+  m.innerHTML = `<div class="ddbox">
+    <div class="big" style="font-size:14vh;line-height:.9;text-align:center">DAILY<br><span style="color:var(--sun)">DOUBLE</span></div>
+    <div class="pill" style="--col:${COLS[S.clue.ci]}">${BW.esc(S.clue.cat)}</div>
+    <div class="sub" style="color:var(--text)">${av(player(S.controllerId))} <b>${pname(S.controllerId)}</b> is choosing a wager...</div>
   </div>`;
 }
 
 function standings() {
-  return `<div class="standings">${S.players.slice().sort((a, b) => b.score - a.score).map((p) =>
-    `<div class="row" style="--c:${p.color}"><span>${BW.esc(p.name)}</span><b>${BW.money(p.score)}</b></div>`).join('')}</div>`;
+  const sorted = S.players.slice().sort((a, b) => b.score - a.score);
+  const top = Math.max(1, sorted.length ? sorted[0].score : 1);
+  return `<div class="standings">${sorted.map((p, i) =>
+    `<div class="row" style="--c:${p.color};--w:${Math.max(0, p.score) / top * 100}%"><span class="rank">${i + 1}</span>${av(p)}<span>${BW.esc(p.name)}</span><b style="${p.score < 0 ? 'color:var(--bad)' : ''}">${BW.money(p.score)}</b></div>`).join('')}</div>`;
 }
 
 function renderRoundEnd(m) {
   m.innerHTML = `<div class="splash">
-    <div class="big">${S.round === 1 ? 'ROUND 1 DONE' : 'ROUND 2 DONE'}</div>
-    <div class="sub">${S.round === 1 ? 'Next up: <b>Double Up</b>, where every value doubles.' : 'Next up: <b>the Final Showdown</b>.'}</div>
+    <div class="eyebrow" style="color:var(--sun)">Round ${S.round} is done</div>
+    <div class="big" style="font-size:8vh">${S.round === 1 ? 'NEXT: DOUBLE UP' : 'NEXT: THE FINAL'}</div>
+    <div class="sub">${S.round === 1 ? 'Every value doubles. Lowest score picks first.' : 'One clue. Everyone wagers in secret.'}</div>
     ${standings()}
-    <div class="sub">The captain taps Continue to keep going.</div>
+    <div class="sub" style="font-size:2.2vh">The ${S.hostMode ? 'host' : 'captain'} taps Continue to keep going.</div>
   </div>`;
+}
+
+function chipsLine(ids, done, icon) {
+  return ids.map((id) => `<span style="display:inline-flex;align-items:center;gap:.5vw;background:var(--panel2);border-radius:4vh;padding:.5vh 1.2vw .5vh .5vh;margin:.4vh">${av(player(id))}${pname(id)} ${done.includes(id) ? icon : '<span style="color:var(--muted)">...</span>'}</span>`).join('');
 }
 
 function renderFinalWager(m) {
   const f = S.final;
   m.innerHTML = `<div class="splash">
-    <div class="big">FINAL SHOWDOWN</div>
-    <div class="sub">Category</div>
-    <div class="big" style="font-size:7vh">${BW.esc(f.category)}</div>
-    <div class="sub">Place your wagers on your phones.</div>
-    <div class="sub">${f.eligible.map((id) => `${pname(id)} ${f.wagered.includes(id) ? '&#10003;' : '...'}`).join(' &nbsp; ')}</div>
+    <div class="eyebrow" style="color:var(--sun)">Final Showdown</div>
+    <div class="sub">The category is</div>
+    <div class="big" style="font-size:8vh;color:var(--sun)">${BW.esc(f.category)}</div>
+    <div class="sub">Place your wager on your phone.</div>
+    <div class="sub" style="font-size:2.4vh;color:var(--text)">${chipsLine(f.eligible, f.wagered, '<span style="color:var(--good)">&#10003;</span>')}</div>
   </div>`;
 }
 
 function renderFinalAnswer(m) {
   const f = S.final;
   m.innerHTML = `
-    <div class="clue">
-      <div class="meta"><span>${BW.esc(f.category)}</span><span class="v">FINAL SHOWDOWN</span></div>
+    <div class="clue" style="--accent:var(--sun)">
+      <div class="meta"><span class="cname">${BW.esc(f.category)}</span><span class="v">FINAL</span></div>
       <div class="q">${BW.esc(f.q)}</div>
-      <div class="status">${f.eligible.map((id) => `${pname(id)} ${f.answered.includes(id) ? '&#128274;' : '...'}`).join(' &nbsp; ')} &nbsp; <span data-timer-text></span></div>
-      <div class="timer"><i data-timer-bar data-total="${S.duration}"></i></div>
+      <div class="bottom"><div class="status" style="font-size:2.4vh">${chipsLine(f.eligible, f.answered, '&#128274;')}</div>${ring()}</div>
     </div>`;
 }
 
 function revealCards() {
   return `<div class="reveals">${S.final.reveals.map((r) => `
-    <div class="rcard ${r.correct ? 'ok' : 'no'}" style="--c:${player(r.id)?.color}">
-      <div class="who">${pname(r.id)}</div>
+    <div class="rcard ${r.correct ? 'ok' : 'no'}" style="--rc:${r.correct ? 'var(--good)' : 'var(--bad)'}">
+      <div class="who">${av(player(r.id))}${pname(r.id)} <span style="margin-left:auto;color:var(--rc)">${r.correct ? '&#10003;' : '&#10007;'}</span></div>
       <div class="what">${BW.esc(r.answer)}</div>
-      <div class="wager">Wagered ${BW.money(r.wager)} ${r.correct ? '&#10003;' : '&#10007;'}${r.overridden ? ' (flipped)' : ''}
+      <div class="wager">${r.correct ? '+' : '-'}${BW.money(r.wager)}${r.overridden ? ' (flipped)' : ''}
         <button class="ghost" style="font-size:1.4vh;padding:.3vh .6vw;margin-left:.5vw" data-act="finalOverride" data-pid="${r.id}">flip</button></div>
     </div>`).join('')}</div>`;
 }
@@ -399,21 +567,38 @@ function revealCards() {
 function renderFinalReveal(m) {
   const f = S.final;
   m.innerHTML = `<div class="splash">
-    <div class="sub">${BW.esc(f.q)}</div>
-    <div class="big" style="font-size:7vh">${BW.esc(f.answer || '')}</div>
+    <div class="sub" style="max-width:75vw">${BW.esc(f.q)}</div>
+    <div class="eyebrow">The answer</div>
+    <div class="big" style="font-size:7vh;color:var(--sun)">${BW.esc(f.answer || '')}</div>
     ${revealCards()}
   </div>`;
 }
 
+function confetti() {
+  if (document.querySelector('.confetti')) return;
+  const c = document.createElement('div');
+  c.className = 'confetti';
+  c.innerHTML = Array.from({ length: 80 }, (_, i) => `<i style="left:${Math.random() * 100}vw;background:${COLS[i % 6]};animation-duration:${3 + Math.random() * 4}s;animation-delay:${-Math.random() * 6}s"></i>`).join('');
+  document.body.appendChild(c);
+}
+
 function renderGameOver(m) {
   const sorted = S.players.slice().sort((a, b) => b.score - a.score);
-  const w = sorted[0];
-  m.innerHTML = `<div class="splash">
-    <div class="sub">And the champion is...</div>
-    <div class="big" style="color:${w ? w.color : ''}">${w ? BW.esc(w.name) : 'Nobody!'}</div>
-    ${S.final && S.final.answer ? `<div class="sub">Final answer: <b>${BW.esc(S.final.answer)}</b></div>` : ''}
+  const top = sorted.length ? sorted[0].score : 0;
+  const champs = sorted.filter((p) => p.score === top);
+  const names = champs.map((p) => `<span style="color:${p.color}">${BW.esc(p.name)}</span>`).join(' &amp; ');
+  const awards = (S.awards || []).map((a, i) => {
+    const p = player(a.pid);
+    return `<div class="award" style="--c:${p ? p.color : '#fff'};--i:${i}"><div class="t">${BW.esc(a.title)}</div><div class="p">${p ? BW.esc(p.name) : ''}</div><div class="d">${BW.esc(a.detail)}</div></div>`;
+  }).join('');
+  confetti();
+  m.innerHTML = `<div class="splash" style="gap:1.6vh">
+    <div class="eyebrow" style="color:var(--sun)">${champs.length > 1 ? "It's a tie! Tonight's champions" : "Tonight's champion"}</div>
+    <div class="big" style="font-size:${champs.length > 1 ? 8 : 11}vh">${sorted.length ? names : 'Nobody!'}</div>
+    ${S.final && S.final.answer ? `<div class="sub">The final answer was <b>${BW.esc(S.final.answer)}</b></div>` : ''}
+    ${awards ? `<div class="awards">${awards}</div>` : ''}
     ${standings()}
-    <div class="sub">The captain can tap Play Again for a fresh board.</div>
+    <div class="sub" style="font-size:2.2vh">The ${S.hostMode ? 'host' : 'captain'} can tap Play again for a fresh board.</div>
   </div>`;
 }
 

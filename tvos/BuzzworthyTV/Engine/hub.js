@@ -113,6 +113,8 @@ var Hub = (function () {
       if (g === game && !pending) pending = setTimeout(flush, 25);
     });
     game = g;
+    // Emoji reactions only change the TV picture, so skip the update to every phone.
+    g.onReact = function () { if (g === game) __native.state(JSON.stringify(g.view('tv'))); };
     if (season && packs.some(function (p) { return /^archive-/.test(p.id); })) g.archiveSeason = Number(season);
     if (!sweeper) sweeper = setInterval(sweep, 3000);
     flush();

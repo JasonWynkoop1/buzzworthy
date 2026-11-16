@@ -32,6 +32,7 @@ struct ContentView: View {
                 }
             }
         }
+        .overlay { if let s = host.state { ReactionLayer(s: s) } }
         .foregroundColor(Theme.text)
         .onPlayPauseCommand { host.act("advance") }
     }
@@ -133,7 +134,8 @@ struct ScoreBar: View {
                 ScoreChip(p: p,
                           compact: s.players.count > 5,
                           picking: s.phase == "board" && p.id == s.controllerId,
-                          buzzed: s.phase == "answering" && s.clue?.buzzedId == p.id)
+                          buzzed: s.phase == "answering" && s.clue?.buzzedId == p.id,
+                          hot: (p.streak ?? 0) >= (s.hotStreak ?? 3))
             }
         }
         .padding(.top, 12)
@@ -145,6 +147,7 @@ struct ScoreChip: View {
     let compact: Bool
     let picking: Bool
     let buzzed: Bool
+    var hot = false
 
     var body: some View {
         let c = Color(hex: p.color)
@@ -167,6 +170,15 @@ struct ScoreChip: View {
                     .padding(.horizontal, 12).padding(.vertical, 4)
                     .background(Capsule().fill(c))
                     .offset(y: -13)
+            }
+        }
+        .overlay(alignment: .topTrailing) {
+            if hot {
+                Text("\u{1F525}\(p.streak ?? 0)")
+                    .font(Theme.body(22, .heavy))
+                    .padding(.horizontal, 10).padding(.vertical, 2)
+                    .background(Capsule().fill(Theme.surface2))
+                    .offset(x: 10, y: -16)
             }
         }
         .opacity(p.connected ? 1 : 0.4)
@@ -217,6 +229,17 @@ struct ControlBar: View {
                 Button { host.newRoom() } label: { label("New room code", big: false) }
                     .buttonStyle(TVButtonStyle())
             }
+            if s.phase == "lobby" || s.phase == "gameover" {
+                Button { host.toggleMusic() } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: host.musicOn ? "music.note" : "speaker.slash.fill")
+                        Text(host.musicOn ? "Music on" : "Music off")
+                    }
+                    .font(Theme.body(22, .semibold))
+                    .padding(.horizontal, 24).padding(.vertical, 11)
+                }
+                .buttonStyle(TVButtonStyle())
+            }
             Spacer()
             if ["reveal", "round-end", "final-wager", "final-answer", "final-reveal"].contains(s.phase) {
                 HStack(spacing: 8) {
@@ -233,5 +256,70 @@ struct ControlBar: View {
         Text(text)
             .font(Theme.body(big ? 28 : 22, big ? .heavy : .semibold))
             .padding(.horizontal, big ? 34 : 24).padding(.vertical, big ? 14 : 11)
+    }
+}
+
+// MARK: - Emoji reactions from phones
+
+/// Emoji that players tap on their phones float up the screen with their name.
+struct ReactionLayer: View {
+    let s: TVState
+    @State private var seen = 0
+    @State private var items: [Floater] = []
+
+    struct Floater: Identifiable {
+        let id: Int
+        let emoji: String
+        let name: String
+        let color: Color
+        let x: CGFloat
+    }
+
+    var body: some View {
+        GeometryReader { geo in
+            ZStack {
+                ForEach(items) { f in
+                    FloatingEmoji(f: f)
+                        .position(x: geo.size.width * f.x, y: geo.size.height - 170)
+                }
+            }
+        }
+        .allowsHitTesting(false)
+        .onAppear { take(s.reactions ?? []) }
+        .onChange(of: s.reactions ?? []) { _, list in take(list) }
+    }
+
+    private func take(_ list: [Reaction]) {
+        for r in list where r.id > seen {
+            seen = r.id
+            let p = s.player(r.pid)
+            let f = Floater(id: r.id, emoji: r.e, name: p?.name ?? "", color: Color(hex: p?.color ?? "#ffffff"), x: CGFloat.random(in: 0.08...0.92))
+            items.append(f)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3.6) { items.removeAll { $0.id == f.id } }
+        }
+    }
+}
+
+struct FloatingEmoji: View {
+    let f: ReactionLayer.Floater
+    @State private var up = false
+
+    var body: some View {
+        VStack(spacing: 4) {
+            Text(f.emoji).font(.system(size: 90))
+            if !f.name.isEmpty {
+                Text(f.name)
+                    .font(Theme.body(20, .heavy))
+                    .foregroundColor(Theme.ink)
+                    .padding(.horizontal, 12).padding(.vertical, 3)
+                    .background(Capsule().fill(f.color))
+            }
+        }
+        .scaleEffect(up ? 1 : 0.4)
+        .offset(y: up ? -560 : 0)
+        .opacity(up ? 0 : 1)
+        .onAppear {
+            withAnimation(.easeOut(duration: 3.4)) { up = true }
+        }
     }
 }
