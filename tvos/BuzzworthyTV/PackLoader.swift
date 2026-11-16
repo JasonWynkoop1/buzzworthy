@@ -27,13 +27,21 @@ enum PackLoader {
         both.enter()
         loadPacks { packs = $0; both.leave() }
         both.enter()
-        loadArchive { archive = $0; both.leave() }
+        loadArchive(era: "any") { archive = $0; both.leave() }
         both.notify(queue: .main) { done(packs, archive) }
     }
 
-    /// Seasons 1 and 2 are spotty in the archive, so pick from 3 to 42.
-    static func loadArchive(_ done: @escaping (ArchiveSeason?) -> Void) {
-        let season = Int.random(in: 3...42)
+    /// Season ranges for the lobby's era buttons, the same as archive.js. Seasons 1 and 2
+    /// are spotty in the archive, so start from 3. Season N first aired in the fall of 1983 + N.
+    static let eras: [String: ClosedRange<Int>] = [
+        "any": 3...42,
+        "classic": 3...16,
+        "2000s": 17...26,
+        "recent": 27...42,
+    ]
+
+    static func loadArchive(era: String, _ done: @escaping (ArchiveSeason?) -> Void) {
+        let season = Int.random(in: eras[era] ?? 3...42)
         let config = URLSessionConfiguration.ephemeral
         config.timeoutIntervalForRequest = 12
         guard let url = URL(string: archiveBase + "season\(season).tsv") else { return done(nil) }

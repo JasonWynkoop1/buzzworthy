@@ -3,6 +3,14 @@ const BW = {
   esc(s) {
     return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   },
+  // Labels for the archive era buttons.
+  ERA_LABELS: { any: 'Any era', classic: 'Classic 80s & 90s', '2000s': '2000s', recent: 'Recent' },
+  // "Season 12 (1995-96)". Season N first aired in the fall of 1983 + N.
+  seasonLabel(n) {
+    if (!n) return '';
+    const y = 1983 + n;
+    return `Season ${n} (${y}-${String((y + 1) % 100).padStart(2, '0')})`;
+  },
   money(n) {
     const s = '$' + Math.abs(n).toLocaleString();
     return n < 0 ? '-' + s : s;

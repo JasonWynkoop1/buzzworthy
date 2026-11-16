@@ -90,12 +90,26 @@ final class GameHost: ObservableObject {
             self?.timers.removeValue(forKey: id)?.invalidate()
         }
         let log: @convention(block) (String) -> Void = { text in NSLog("Buzzworthy JS: \(text)") }
+        // The lobby picked a new era: download a season from it and hand it to the engine.
+        let loadArchive: @convention(block) (String, Int) -> Void = { [weak self] era, id in
+            DispatchQueue.main.async {
+                PackLoader.loadArchive(era: era) { [weak self] got in
+                    guard let self = self else { return }
+                    if let got = got {
+                        self.call("archiveLoaded", got.tsv, got.season, id)
+                    } else {
+                        self.call("archiveFailed", id)
+                    }
+                }
+            }
+        }
 
         native.setObject(unsafeBitCast(send, to: AnyObject.self), forKeyedSubscript: "send" as NSString)
         native.setObject(unsafeBitCast(stateBlock, to: AnyObject.self), forKeyedSubscript: "state" as NSString)
         native.setObject(unsafeBitCast(schedule, to: AnyObject.self), forKeyedSubscript: "schedule" as NSString)
         native.setObject(unsafeBitCast(cancel, to: AnyObject.self), forKeyedSubscript: "cancel" as NSString)
         native.setObject(unsafeBitCast(log, to: AnyObject.self), forKeyedSubscript: "log" as NSString)
+        native.setObject(unsafeBitCast(loadArchive, to: AnyObject.self), forKeyedSubscript: "loadArchive" as NSString)
         ctx.setObject(native, forKeyedSubscript: "__native" as NSString)
 
         for file in ["shim", "judge", "game", "rules", "archive", "hub"] {

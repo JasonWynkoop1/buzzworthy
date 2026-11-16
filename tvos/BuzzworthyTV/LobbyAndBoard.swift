@@ -8,12 +8,21 @@ struct LobbyView: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: 70) {
-            VStack(alignment: .leading, spacing: 26) {
-                Wordmark(size: 124, stacked: true)
-                Text("The trivia showdown where your phone is the buzzer.")
-                    .font(Theme.body(30)).foregroundColor(Theme.muted)
+            // The era row and board builder need room, so the logo shrinks when they show.
+            let compact = s.hasArchive == true || s.draft != nil
+            VStack(alignment: .leading, spacing: compact ? 20 : 26) {
+                Wordmark(size: compact ? 92 : 124, stacked: true)
+                if !compact {
+                    Text("The trivia showdown where your phone is the buzzer.")
+                        .font(Theme.body(30)).foregroundColor(Theme.muted)
+                }
                 Seats(s: s)
-                PackPicker(s: s)
+                if s.hasArchive == true { EraPicker(s: s) }
+                if let draft = s.draft, draft.count == 2 {
+                    BoardBuilder(s: s, draft: draft)
+                } else {
+                    PackPicker(s: s)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -105,6 +114,18 @@ struct PackPicker: View {
                     Text("Need at least 12").font(Theme.body(20, .semibold)).foregroundColor(Theme.bad)
                 }
                 Spacer(minLength: 0)
+                if (s.categoryCount ?? 0) >= 12 {
+                    Button {
+                        host.act(["type": "previewBoard"])
+                    } label: {
+                        HStack(spacing: 10) {
+                            Image(systemName: "square.grid.3x2.fill").font(.system(size: 20))
+                            Text("Preview the board").font(Theme.body(20, .heavy))
+                        }
+                        .padding(.horizontal, 18).padding(.vertical, 8)
+                    }
+                    .buttonStyle(TVButtonStyle(fill: Theme.surface, text: Theme.yellow, corner: 30))
+                }
                 if s.easyAvailable == true {
                     let on = s.easyMode == true
                     Button {
@@ -147,6 +168,103 @@ struct PackPicker: View {
                 }
             }
         }
+    }
+}
+
+/// Era buttons for the real-show archive. Picking one loads a random season from that era.
+struct EraPicker: View {
+    @EnvironmentObject var host: GameHost
+    let s: TVState
+
+    static let labels = ["any": "Any era", "classic": "Classic 80s & 90s", "2000s": "2000s", "recent": "Recent"]
+
+    static func seasonLabel(_ n: Int?) -> String {
+        guard let n = n, n > 0 else { return "" }
+        let start = 1983 + n
+        return "Season \(n) (\(start)-\(String(format: "%02d", (start + 1) % 100)))"
+    }
+
+    var body: some View {
+        HStack(spacing: 14) {
+            Eyebrow(text: "Clues from")
+            ForEach(s.eras ?? [], id: \.self) { e in
+                let on = s.era == e
+                Button {
+                    host.act(["type": "setEra", "era": e])
+                } label: {
+                    HStack(spacing: 8) {
+                        if on { Image(systemName: "checkmark").font(.system(size: 17, weight: .bold)) }
+                        Text(Self.labels[e] ?? e).font(Theme.body(19, on ? .heavy : .semibold)).lineLimit(1)
+                    }
+                    .padding(.horizontal, 16).padding(.vertical, 8)
+                }
+                .buttonStyle(TVButtonStyle(fill: on ? Theme.mint : Theme.surface,
+                                           text: on ? Theme.ink : Theme.muted,
+                                           corner: 30))
+            }
+            Group {
+                if s.archiveLoading == true {
+                    Text("Loading clues...").foregroundColor(Theme.muted)
+                } else if s.archiveError == true {
+                    Text("Could not load that era. Try again.").foregroundColor(Theme.bad)
+                } else {
+                    Text(Self.seasonLabel(s.archiveSeason)).foregroundColor(Theme.muted)
+                }
+            }
+            .font(Theme.body(18)).lineLimit(1).minimumScaleFactor(0.6)
+        }
+    }
+}
+
+/// The 12 categories that will be played. Select one to swap it for another.
+struct BoardBuilder: View {
+    @EnvironmentObject var host: GameHost
+    let s: TVState
+    let draft: [[String]]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 14) {
+                Eyebrow(text: "Your board")
+                Text("Select a category to swap it").font(Theme.body(20)).foregroundColor(Theme.muted)
+                Spacer(minLength: 0)
+                small("Shuffle all", icon: "shuffle") { host.act(["type": "previewBoard"]) }
+                small("Back to packs", icon: "chevron.left") { host.act(["type": "clearPreview"]) }
+            }
+            ForEach(0..<2, id: \.self) { r in
+                HStack(alignment: .top, spacing: 12) {
+                    Text("R\(r + 1)").font(Theme.body(20, .heavy)).foregroundColor(Theme.yellow)
+                        .frame(width: 40, alignment: .leading).padding(.top, 10)
+                    LazyVGrid(columns: Array(repeating: GridItem(.fixed(298), spacing: 12), count: 3), alignment: .leading, spacing: 10) {
+                        ForEach(Array(draft[r].enumerated()), id: \.offset) { ci, name in
+                            Button {
+                                host.act(["type": "swapCategory", "r": r + 1, "ci": ci])
+                            } label: {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "arrow.triangle.2.circlepath").font(.system(size: 16, weight: .bold))
+                                    Text(name).font(Theme.body(18, .heavy)).lineLimit(1).minimumScaleFactor(0.55)
+                                    Spacer(minLength: 0)
+                                }
+                                .padding(.horizontal, 14).padding(.vertical, 9)
+                                .frame(width: 298)
+                            }
+                            .buttonStyle(TVButtonStyle(fill: Theme.mint, text: Theme.ink, corner: 24))
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func small(_ title: String, icon: String, _ action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                Image(systemName: icon).font(.system(size: 18))
+                Text(title).font(Theme.body(19, .heavy))
+            }
+            .padding(.horizontal, 16).padding(.vertical, 8)
+        }
+        .buttonStyle(TVButtonStyle(fill: Theme.surface, text: Theme.text, corner: 30))
     }
 }
 

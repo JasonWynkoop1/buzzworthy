@@ -24,6 +24,8 @@ const T = {
 // Answer clock choices (seconds) for spoken answers in host mode. 0 means no clock.
 const ANSWER_TIMES = [5, 10, 15, 20, 30, 0];
 const MAX_ADJUST = 1000000;
+// Which stretch of the real-show archive to pull a season from (archive.js has the season ranges).
+const ERAS = ['any', 'classic', '2000s', 'recent'];
 
 function readingTime(text) {
   return Math.max(2500, Math.min(7000, 1200 + text.length * 45));
@@ -64,6 +66,18 @@ class Game {
     this.events = 0;
     this.answerTime = 10;     // host mode: seconds a player has to start answering after buzzing in
     this.easyPrev = null;     // pack selection to restore when easy mode is switched off
+    // Real-show archive (see archive.js). The page or app that runs the room
+    // watches archiveRequest, downloads a season from that era, and hands the
+    // packs back with setArchivePacks.
+    this.era = 'any';
+    this.archiveSeason = null;
+    this.archiveRequest = null;  // { id, era } while a new season is wanted
+    this.archiveReqId = 0;
+    this.archiveLoading = false;
+    this.archiveError = false;
+    // Board builder: the 12 categories picked ahead of time ([round1, round2]),
+    // so the host or captain can look them over and swap any before starting.
+    this.draft = null;
   }
 
   // ---------- setup ----------
@@ -85,6 +99,7 @@ class Game {
     if (this.phase !== 'lobby' || !this.packs.some((pk) => pk.id === id)) return;
     if (this.selectedPacks.has(id)) this.selectedPacks.delete(id);
     else this.selectedPacks.add(id);
+    this.refreshDraft();
     this.touch();
   }
 
@@ -113,7 +128,81 @@ class Game {
       this.easyPrev = new Set(this.selectedPacks);
       this.selectedPacks = new Set(easy);
     }
+    this.refreshDraft();
     this.touch();
+  }
+
+  // ---------- archive era ----------
+  hasArchive() {
+    return this.packs.some((pk) => pk.id.startsWith('archive-'));
+  }
+
+  setEra(era) {
+    if (this.phase !== 'lobby' || !ERAS.includes(era) || !this.hasArchive()) return;
+    this.era = era;
+    this.archiveReqId += 1;
+    this.archiveRequest = { id: this.archiveReqId, era };
+    this.archiveLoading = true;
+    this.archiveError = false;
+    this.touch();
+  }
+
+  // New archive topic packs arrived (for request id). Keeps the same topics switched on.
+  setArchivePacks(packs, season, id) {
+    if (id !== this.archiveReqId || this.phase !== 'lobby') return;
+    this.archiveLoading = false;
+    packs = (packs || []).filter((pk) => pk && pk.categories && pk.categories.length);
+    if (!packs.length) { this.archiveError = true; this.touch(); return; }
+    const wasOn = new Set([...this.selectedPacks].filter((pid) => pid.startsWith('archive-')));
+    const hadArchiveOn = wasOn.size > 0;
+    this.packs = packs.concat(this.packs.filter((pk) => !pk.id.startsWith('archive-')));
+    for (const pid of [...this.selectedPacks]) if (pid.startsWith('archive-')) this.selectedPacks.delete(pid);
+    for (const pk of packs) if (hadArchiveOn ? wasOn.has(pk.id) : pk.selected) this.selectedPacks.add(pk.id);
+    if (!this.selectedPacks.size) this.selectedPacks.add(packs[0].id);
+    this.archiveSeason = season || null;
+    this.refreshDraft();
+    this.touch();
+  }
+
+  archiveFailed(id) {
+    if (id !== this.archiveReqId) return;
+    this.archiveLoading = false;
+    this.archiveError = true;
+    this.touch();
+  }
+
+  // ---------- board builder ----------
+  previewBoard() {
+    if (this.phase !== 'lobby') return;
+    const cats = shuffle(this.bank().categories.filter((c) => c.clues.length >= 5));
+    if (cats.length < 12) return { error: 'Pick packs with at least 12 categories in total.' };
+    this.draft = [cats.slice(0, 6), cats.slice(6, 12)];
+    this.touch();
+  }
+
+  // Swap one previewed category (round r = 1 or 2, column ci) for another one from the chosen packs.
+  swapCategory(r, ci) {
+    if (this.phase !== 'lobby' || !this.draft) return;
+    const row = this.draft[r - 1];
+    if (!row || !row[ci]) return;
+    const inUse = new Set(this.draft.flat().map((c) => c.name.toLowerCase()));
+    const spare = this.bank().categories.filter((c) => c.clues.length >= 5 && !inUse.has(c.name.toLowerCase()));
+    if (!spare.length) return { error: 'No other categories left. Switch on more topics.' };
+    row[ci] = spare[Math.floor(Math.random() * spare.length)];
+    this.touch();
+  }
+
+  clearPreview() {
+    if (this.phase !== 'lobby') return;
+    this.draft = null;
+    this.touch();
+  }
+
+  // After the packs change, an open preview is rebuilt from the new packs.
+  refreshDraft() {
+    if (!this.draft) return;
+    this.draft = null;
+    this.previewBoard();
   }
 
   setAnswerTime(sec) {
@@ -175,7 +264,9 @@ class Game {
       }
       return board;
     };
-    this.rounds = [mk(1, pick(), 1), mk(2, pick(), 2)];
+    const chosen = this.draft && this.draft.every((row) => row.length === 6) ? this.draft : null;
+    this.rounds = chosen ? [mk(1, chosen[0], 1), mk(2, chosen[1], 2)] : [mk(1, pick(), 1), mk(2, pick(), 2)];
+    this.draft = null;
     const f = shuffle(bank.finals)[0];
     this.finalClue = f ? { category: f.category, q: f.q, a: f.a, alt: f.alt || [] } : null;
   }
@@ -297,7 +388,8 @@ class Game {
 
   start() {
     if (this.phase !== 'lobby' || this.players.size === 0) return;
-    if (this.bank().categories.length < 12) return { error: 'Pick packs with at least 12 categories in total.' };
+    if (this.archiveLoading) return { error: 'Still loading clues from that era. Try again in a moment.' };
+    if (!this.draft && this.bank().categories.length < 12) return { error: 'Pick packs with at least 12 categories in total.' };
     this.buildRounds();
     this.round = 1;
     this.controllerId = this.order[Math.floor(Math.random() * this.order.length)];
@@ -634,6 +726,7 @@ class Game {
     for (const p of this.players.values()) p.score = 0;
     this.phase = 'lobby';
     this.round = 0;
+    this.draft = null;
     this.clue = null;
     this.final = null;
     this.lastResult = null;
@@ -682,6 +775,13 @@ class Game {
       v.categoryCount = this.bank().categories.length;
       v.easyAvailable = this.easyPacks().length > 0;
       v.easyMode = this.easyOn();
+      v.hasArchive = this.hasArchive();
+      v.era = this.era;
+      v.eras = ERAS;
+      v.archiveSeason = this.archiveSeason;
+      v.archiveLoading = this.archiveLoading;
+      v.archiveError = this.archiveError;
+      v.draft = this.draft && this.draft.map((row) => row.map((c) => c.name));
     }
     if (this.final) {
       const f = this.final;
