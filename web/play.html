@@ -390,6 +390,14 @@ function render() {
 
   if (ph === 'board') {
     const controllerOffline = !s.players.find((p) => p.id === s.controllerId)?.connected;
+    // With a host, the player says their pick out loud and the host taps it.
+    if (s.hostMode) {
+      return setScreen('board-host-' + s.controllerId + meCtrl, `<div class="center">
+        ${meCtrl ? `<div class="big" style="color:var(--sun)">YOUR PICK!</div>
+          <div class="msg">Tell ${BW.esc(s.hostName || 'the host')} a category and an amount.</div>`
+          : `<div class="msg"><b>${pname(s.controllerId)}</b> is picking a clue...</div>
+          <div class="muted">Get your thumb ready.</div>`}</div>`);
+    }
     const canPick = meCtrl || (s.me.isCaptain && controllerOffline);
     if (canPick) {
       const key = 'board-' + s.round + '-' + s.board.map((cc) => cc.clues.map((x) => (x.used ? 1 : 0)).join('')).join('');
@@ -534,8 +542,8 @@ function renderHost() {
     const ddLeft = s.board.reduce((n, cc, ci) => n + cc.clues.filter((x, ri) => !x.used && dd[ci] && dd[ci][ri]).length, 0);
     const key = 'h-board-' + s.round + s.controllerId + s.board.map((cc) => cc.clues.map((x) => (x.used ? 1 : 0)).join('')).join('') + JSON.stringify(dd);
     return setScreen(key, `
-      <div class="msg" style="text-align:center"><b>${pname(s.controllerId)}</b> picks a clue.</div>
-      <div class="muted" style="text-align:center;font-size:13px">They pick on their phone, or tell you and you tap it here.${ddLeft ? ` White tiles are Daily Doubles (${ddLeft} left, only you can see them).` : ''}</div>
+      <div class="msg" style="text-align:center">Ask <b>${pname(s.controllerId)}</b> for a pick.</div>
+      <div class="muted" style="text-align:center;font-size:13px">They say a category and an amount, then you tap it here.${ddLeft ? ` White tiles are Daily Doubles (${ddLeft} left, only you can see them).` : ''}</div>
       <div class="mini">
         ${s.board.map((cc, ci) => `<div class="h" style="--col:var(--c${ci})">${BW.esc(cc.name)}</div>`).join('')}
         ${[0, 1, 2, 3, 4].map((ri) => s.board.map((cc, ci) => `<button style="--col:var(--c${ci})" class="${dd[ci] && dd[ci][ri] ? 'dd' : ''}" data-pick="${ci},${ri}" ${cc.clues[ri].used ? 'disabled' : ''}>${cc.clues[ri].value}</button>`).join('')).join('')}

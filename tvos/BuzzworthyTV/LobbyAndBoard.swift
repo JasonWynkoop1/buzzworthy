@@ -317,7 +317,8 @@ struct BoardView: View {
                     Avatar(name: p.name, color: Color(hex: p.color), size: 36)
                     Text("\(p.name), it's your pick.").font(Theme.body(26, .heavy))
                 }
-                Text("Choose on your phone, or here with the remote.")
+                Text(s.hostMode ? "Tell \(s.hostName.isEmpty ? "the host" : s.hostName) a category and an amount."
+                                : "Choose on your phone, or here with the remote.")
                     .font(Theme.body(24)).foregroundColor(Theme.muted)
             }
         }

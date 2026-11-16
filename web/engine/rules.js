@@ -33,7 +33,9 @@ function act(game, role, pid, body) {
     case 'togglePack': g.togglePack(String(body.pack)); break;
     case 'pick': {
       // The player in control picks. The captain can step in if the controller is offline.
-      const allowed = role === 'tv' || role === 'host' || pid === g.controllerId || (pid === g.captainId && !g.isConnected(g.controllerId));
+      // With a host, the player says their pick out loud and only the host taps it.
+      const allowed = role === 'tv' || role === 'host' || (!g.hostMode && (pid === g.controllerId || (pid === g.captainId && !g.isConnected(g.controllerId))));
+      if (!allowed && g.hostMode) return { error: 'Tell the host your pick.' };
       if (!allowed) return { error: 'not your pick' };
       g.pick(Number(body.ci), Number(body.ri));
       break;
