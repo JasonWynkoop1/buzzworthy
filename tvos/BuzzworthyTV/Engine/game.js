@@ -26,6 +26,11 @@ const ANSWER_TIMES = [5, 10, 15, 20, 30, 0];
 const MAX_ADJUST = 1000000;
 // Which stretch of the real-show archive to pull a season from (archive.js has the season ranges).
 const ERAS = ['any', 'classic', '2000s', 'recent'];
+// Emoji reactions players can send from their phones to float up on the TV.
+const REACTIONS = ['👏', '😂', '😱', '🔥', '🤯', '🎉'];
+const REACT_GAP = 1200;    // ms between reactions from one player
+const REACT_LIFE = 4000;   // ms a reaction stays in the view
+const STREAK_HOT = 3;      // correct answers in a row to be "on fire"
 
 function readingTime(text) {
   return Math.max(2500, Math.min(7000, 1200 + text.length * 45));
@@ -78,6 +83,18 @@ class Game {
     // Board builder: the 12 categories picked ahead of time ([round1, round2]),
     // so the host or captain can look them over and swap any before starting.
     this.draft = null;
+    // Category names already played in this room, so Play again deals a fresh board.
+    this.played = new Set();
+    this.openedAt = 0;        // when buzzers last opened, to time the buzz-in
+    this.reactions = [];      // recent emoji reactions [{ id, pid, e, at }]
+    this.reactSeq = 0;
+    this.onReact = null;      // set by the page or app to show reactions without a full update
+  }
+
+  // Categories that have not been played in this room yet (all of them if that leaves too few).
+  fresh(categories, need) {
+    const unplayed = categories.filter((c) => !this.played.has(c.name.toLowerCase()));
+    return unplayed.length >= need ? unplayed : categories;
   }
 
   // ---------- setup ----------
@@ -174,8 +191,9 @@ class Game {
   // ---------- board builder ----------
   previewBoard() {
     if (this.phase !== 'lobby') return;
-    const cats = shuffle(this.bank().categories.filter((c) => c.clues.length >= 5));
-    if (cats.length < 12) return { error: 'Pick packs with at least 12 categories in total.' };
+    const all = this.bank().categories.filter((c) => c.clues.length >= 5);
+    if (all.length < 12) return { error: 'Pick packs with at least 12 categories in total.' };
+    const cats = shuffle(this.fresh(all, 12));
     this.draft = [cats.slice(0, 6), cats.slice(6, 12)];
     this.touch();
   }
@@ -186,8 +204,9 @@ class Game {
     const row = this.draft[r - 1];
     if (!row || !row[ci]) return;
     const inUse = new Set(this.draft.flat().map((c) => c.name.toLowerCase()));
-    const spare = this.bank().categories.filter((c) => c.clues.length >= 5 && !inUse.has(c.name.toLowerCase()));
-    if (!spare.length) return { error: 'No other categories left. Switch on more topics.' };
+    const spareAll = this.bank().categories.filter((c) => c.clues.length >= 5 && !inUse.has(c.name.toLowerCase()));
+    if (!spareAll.length) return { error: 'No other categories left. Switch on more topics.' };
+    const spare = this.fresh(spareAll, 1);
     row[ci] = spare[Math.floor(Math.random() * spare.length)];
     this.touch();
   }
@@ -223,7 +242,9 @@ class Game {
 
   buildRounds() {
     const bank = this.bank();
-    const cats = shuffle(bank.categories);
+    // Unplayed categories first, then the rest, so a replay only repeats when it has to.
+    const cats = shuffle(bank.categories.filter((c) => !this.played.has(c.name.toLowerCase())))
+      .concat(shuffle(bank.categories.filter((c) => this.played.has(c.name.toLowerCase()))));
     const used = new Set();
     const pick = () => {
       const out = [];
@@ -267,7 +288,10 @@ class Game {
     const chosen = this.draft && this.draft.every((row) => row.length === 6) ? this.draft : null;
     this.rounds = chosen ? [mk(1, chosen[0], 1), mk(2, chosen[1], 2)] : [mk(1, pick(), 1), mk(2, pick(), 2)];
     this.draft = null;
-    const f = shuffle(bank.finals)[0];
+    for (const row of this.rounds) for (const c of row) this.played.add(c.name.toLowerCase());
+    const freshFinals = bank.finals.filter((fin) => !this.played.has('final:' + fin.q));
+    const f = shuffle(freshFinals.length ? freshFinals : bank.finals)[0];
+    if (f) this.played.add('final:' + f.q);
     this.finalClue = f ? { category: f.category, q: f.q, a: f.a, alt: f.alt || [] } : null;
   }
 
@@ -287,13 +311,82 @@ class Game {
         color: COLORS.find((c) => !usedColors.has(c)) || COLORS[0],
         connections: 0,
         lockUntil: 0,
+        lastReact: 0,
       };
+      this.resetStats(p);
       this.players.set(pid, p);
       this.order.push(pid);
       if (!this.captainId) this.captainId = pid;
     }
     this.touch();
     return { ok: true };
+  }
+
+  // Per-game stats for the streak flames and the end-of-game awards.
+  resetStats(p) {
+    p.streak = 0;     // correct answers in a row right now
+    p.best = 0;       // longest streak this game
+    p.right = 0;
+    p.wrong = 0;
+    p.fastest = null; // quickest buzz-in, in ms
+    p.bigWin = 0;     // biggest wager won (Daily Double or final)
+  }
+
+  // Count a ruling for the streaks and awards. undo flips an earlier one.
+  tally(p, correct, wager, undo) {
+    if (!p) return;
+    if (undo) {
+      // A flipped ruling: move the count across. Streaks are only adjusted forward.
+      if (correct) { p.wrong = Math.max(0, p.wrong - 1); p.right++; p.streak++; p.best = Math.max(p.best, p.streak); if (wager) p.bigWin = Math.max(p.bigWin, wager); }
+      else { p.right = Math.max(0, p.right - 1); p.wrong++; p.streak = 0; }
+      return;
+    }
+    if (correct) {
+      p.right++;
+      p.streak++;
+      p.best = Math.max(p.best, p.streak);
+      if (wager) p.bigWin = Math.max(p.bigWin, wager);
+    } else {
+      p.wrong++;
+      p.streak = 0;
+    }
+  }
+
+  // A player taps an emoji on their phone; it floats up on the TV.
+  react(pid, idx) {
+    const p = this.players.get(pid);
+    const e = REACTIONS[Number(idx)];
+    const now = Date.now();
+    if (!p || !e || now - (p.lastReact || 0) < REACT_GAP) return;
+    p.lastReact = now;
+    this.reactions = this.reactions.filter((r) => now - r.at < REACT_LIFE);
+    this.reactions.push({ id: ++this.reactSeq, pid, e, at: now });
+    if (this.reactions.length > 12) this.reactions.shift();
+    // Only the TV needs to see reactions, so skip the update to every phone when the page allows it.
+    if (this.onReact) this.onReact();
+    else this.touch();
+  }
+
+  // End-of-game awards, worked out from the stats. Each goes to one player.
+  awards() {
+    const ps = this.order.map((id) => this.players.get(id)).filter(Boolean);
+    const out = [];
+    const best = (score, ok) => {
+      let top = null;
+      for (const p of ps) if (ok(p) && (!top || score(p) > score(top))) top = p;
+      return top;
+    };
+    const fast = best((p) => -p.fastest, (p) => p.fastest != null);
+    if (fast) out.push({ id: 'fast', title: 'Fastest Finger', pid: fast.id, detail: (fast.fastest / 1000).toFixed(2) + 's buzz' });
+    const brain = best((p) => p.right, (p) => p.right > 0);
+    if (brain) out.push({ id: 'brain', title: 'Big Brain', pid: brain.id, detail: brain.right + ' right' });
+    const hot = best((p) => p.best, (p) => p.best >= STREAK_HOT);
+    if (hot) out.push({ id: 'hot', title: 'On Fire', pid: hot.id, detail: hot.best + ' in a row' });
+    const roller = best((p) => p.bigWin, (p) => p.bigWin > 0);
+    if (roller) out.push({ id: 'roller', title: 'High Roller', pid: roller.id, detail: 'won a $' + roller.bigWin.toLocaleString() + ' bet' });
+    const brave = best((p) => p.wrong, (p) => p.wrong >= 3);
+    if (brave) out.push({ id: 'brave', title: 'Fearless', pid: brave.id, detail: brave.wrong + ' brave guesses' });
+    return out;
   }
 
   get hostMode() {
@@ -404,7 +497,7 @@ class Game {
     if (!cl || cl.used) return;
     cl.used = true;
     this.lastResult = null;
-    this.clue = { ci, ri, cat: b[ci].name, value: cl.value, q: cl.q, a: cl.a, alt: cl.alt, dd: cl.dd, tried: [], buzzedId: null, wager: null };
+    this.clue = { ci, ri, cat: b[ci].name, value: cl.value, q: cl.q, a: cl.a, alt: cl.alt, dd: cl.dd, tried: [], buzzedId: null, wager: null, buzzes: [] };
     if (cl.dd) {
       this.phase = 'dd-wager';
       this.clearTimer();
@@ -423,6 +516,7 @@ class Game {
   openBuzzers(window) {
     this.phase = 'open';
     this.clue.buzzedId = null;
+    this.openedAt = Date.now();
     this.setTimer(window, () => this.endClue());
     this.touch();
   }
@@ -435,15 +529,31 @@ class Game {
       p.lockUntil = now + T.earlyPenalty;
       return { result: 'early' };
     }
+    // Someone beat them to it: still time it, so everyone sees the buzz order.
+    if (this.phase === 'answering' && this.openedAt) {
+      if (this.clue.tried.includes(pid) || this.clue.buzzedId === pid || this.clue.buzzes.some((b) => b.pid === pid)) return { result: 'ignored' };
+      const late = Math.max(0, now - this.openedAt);
+      this.clue.buzzes.push({ pid, ms: late });
+      if (p.fastest == null || late < p.fastest) p.fastest = late;
+      this.touch();
+      return { result: 'late', ms: late };
+    }
     if (this.phase !== 'open') return { result: 'ignored' };
     if (this.clue.tried.includes(pid)) return { result: 'tried' };
     if (now < p.lockUntil) return { result: 'early' };
     this.clue.buzzedId = pid;
+    // How quickly they buzzed after the buzzers opened (shown on the TV, and for the awards).
+    const ms = Math.max(0, now - this.openedAt);
+    this.clue.buzzMs = ms;
+    if (p.fastest == null || ms < p.fastest) p.fastest = ms;
+    // One time per player per clue (a second chance after a miss counts as a new buzz).
+    this.clue.buzzes = this.clue.buzzes.filter((b) => b.pid !== pid);
+    this.clue.buzzes.push({ pid, ms, won: true });
     this.phase = 'answering';
     if (this.hostMode) this.startAnswerClock(pid);
     else this.setTimer(T.answer, () => this.submitAnswer(pid, '', true));
     this.touch();
-    return { result: 'won' };
+    return { result: 'won', ms };
   }
 
   // Host mode: the visible answer clock. When it hits zero the TV shows "Time's up"
@@ -472,8 +582,9 @@ class Game {
       const p = this.players.get(pid);
       const v = this.clue.value;
       if (p) p.score += correct ? v : -v;
+      this.tally(p, correct, 0);
       this.clue.tried.push(pid);
-      this.lastResult = { pid, answer: shown(), correct, delta: v, overridden: false };
+      this.lastResult = { pid, answer: shown(), correct, delta: v, overridden: false, streak: p ? p.streak : 0 };
       if (correct) {
         this.controllerId = pid;
         this.revealClue();
@@ -490,7 +601,8 @@ class Game {
       const p = this.players.get(pid);
       const v = this.clue.wager;
       if (p) p.score += correct ? v : -v;
-      this.lastResult = { pid, answer: shown(), correct, delta: v, overridden: false };
+      this.tally(p, correct, v);
+      this.lastResult = { pid, answer: shown(), correct, delta: v, overridden: false, dd: true, streak: p ? p.streak : 0 };
       this.revealClue();
       this.touch();
     }
@@ -608,6 +720,8 @@ class Game {
     p.score += sign * 2 * r.delta;
     r.correct = !r.correct;
     r.overridden = !r.overridden;
+    this.tally(p, r.correct, r.dd ? r.delta : 0, true);
+    r.streak = p.streak;
     if (r.correct) {
       this.controllerId = r.pid;
       if (['open', 'reading', 'answering'].includes(this.phase)) this.revealClue();
@@ -702,6 +816,7 @@ class Game {
     r.shown = true;
     if (p && !r.applied) {
       p.score += r.correct ? f.wagers[id] : -f.wagers[id];
+      this.tally(p, r.correct, f.wagers[id]);
       r.applied = true;
     }
     this.setTimer(T.finalStep, () => this.finalStep());
@@ -718,12 +833,13 @@ class Game {
     p.score += r.correct ? -2 * w : 2 * w;
     r.correct = !r.correct;
     r.overridden = !r.overridden;
+    this.tally(p, r.correct, w, true);
     this.touch();
   }
 
   playAgain() {
     if (this.phase !== 'gameover') return;
-    for (const p of this.players.values()) p.score = 0;
+    for (const p of this.players.values()) { p.score = 0; this.resetStats(p); }
     this.phase = 'lobby';
     this.round = 0;
     this.draft = null;
@@ -737,6 +853,7 @@ class Game {
   // ---------- views ----------
   view(role, pid) {
     const showAnswer = this.phase === 'reveal';
+    const v0now = Date.now();
     const b = this.board();
     const v = {
       code: this.code,
@@ -752,7 +869,7 @@ class Game {
       controllerId: this.controllerId,
       players: this.order.map((id) => {
         const p = this.players.get(id);
-        return { id, name: p.name, score: p.score, color: p.color, connected: p.connections > 0 };
+        return { id, name: p.name, score: p.score, color: p.color, connected: p.connections > 0, streak: p.streak };
       }),
       board: b && b.map((c) => ({ name: c.name, clues: c.clues.map((cl) => ({ value: cl.value, used: cl.used })) })),
       clue: this.clue && {
@@ -765,11 +882,17 @@ class Game {
         q: this.phase === 'dd-wager' ? null : this.clue.q,
         answer: showAnswer ? this.clue.a : null,
         buzzedId: this.clue.buzzedId,
+        buzzMs: this.clue.buzzMs == null ? null : this.clue.buzzMs,
+        // Everyone who buzzed on this clue, fastest first, with their time in ms.
+        buzzes: this.clue.buzzes.slice().sort((a, b) => a.ms - b.ms).map((b) => ({ pid: b.pid, ms: b.ms, won: !!b.won })),
         tried: this.clue.tried,
       },
       lastResult: this.lastResult,
       answerTime: this.answerTime,
+      hotStreak: STREAK_HOT,
+      reactions: this.reactions.filter((r) => v0now - r.at < REACT_LIFE).map((r) => ({ id: r.id, pid: r.pid, e: r.e })),
     };
+    if (this.phase === 'gameover') v.awards = this.awards();
     if (this.phase === 'lobby') {
       v.packs = this.packs.map((pk) => ({ id: pk.id, title: pk.title, description: pk.description, count: pk.categories.length, selected: this.selectedPacks.has(pk.id), easy: !!pk.easy }));
       v.categoryCount = this.bank().categories.length;
@@ -828,6 +951,6 @@ class Game {
   }
 }
 
-if (typeof module !== 'undefined' && module.exports) module.exports = { Game, T };
-else window.BWGame = { Game, T };
+if (typeof module !== 'undefined' && module.exports) module.exports = { Game, T, REACTIONS };
+else window.BWGame = { Game, T, REACTIONS };
 })();

@@ -4,7 +4,12 @@ import AVFoundation
 final class SoundPlayer {
     var enabled = true
     private var players: [String: AVAudioPlayer] = [:]
-    private static let names = ["pick", "open", "buzz", "correct", "wrong", "timeout", "dd", "board", "think", "fanfare"]
+    private static let names = ["pick", "open", "buzz", "correct", "wrong", "timeout", "dd", "board", "think", "fanfare", "theme"]
+    private static let themeVolume: Float = 0.5
+    /// Theme music in the lobby and after the champion is crowned. Remembered between launches.
+    private(set) var musicOn: Bool = UserDefaults.standard.object(forKey: "musicOn") as? Bool ?? true
+    private var themeWanted = false
+    private var themeTimer: Timer?
 
     init() {
         try? AVAudioSession.sharedInstance().setCategory(.ambient)
@@ -15,6 +20,7 @@ final class SoundPlayer {
                 NSLog("BUZZWORTHY_SOUND_MISSING \(name)")
                 continue
             }
+            if name == "theme" { p.numberOfLoops = -1; p.volume = 0 }
             p.prepareToPlay()
             players[name] = p
         }
@@ -29,12 +35,60 @@ final class SoundPlayer {
 
     func startMusic(_ name: String) { play(name) }
 
+    func setMusic(_ on: Bool) {
+        musicOn = on
+        UserDefaults.standard.set(on, forKey: "musicOn")
+        syncTheme()
+    }
+
+    private func wantTheme(_ on: Bool) {
+        themeWanted = on
+        syncTheme()
+    }
+
+    private func syncTheme() {
+        guard let t = players["theme"] else { return }
+        if themeWanted && musicOn && enabled {
+            if !t.isPlaying {
+                t.volume = 0
+                t.play()
+            }
+            t.setVolume(Self.themeVolume, fadeDuration: 1.0)
+        } else if t.isPlaying {
+            t.setVolume(0, fadeDuration: 0.6)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.65) { [weak self] in
+                guard let self = self, !(self.themeWanted && self.musicOn) else { return }
+                t.pause()
+            }
+        }
+    }
+
+    /// The theme plays in the lobby, and comes back after the champion fanfare.
+    private func pickMusic(from a: TVState?, to b: TVState) {
+        if b.phase == "lobby" {
+            themeTimer?.invalidate()
+            wantTheme(true)
+        } else if b.phase == "gameover" {
+            if a?.phase != "gameover" {
+                wantTheme(false)
+                themeTimer?.invalidate()
+                themeTimer = Timer.scheduledTimer(withTimeInterval: 5.5, repeats: false) { [weak self] _ in
+                    self?.wantTheme(true)
+                }
+            }
+        } else {
+            themeTimer?.invalidate()
+            if themeWanted { wantTheme(false) }
+        }
+    }
+
     func stopMusic() {
         players["think"]?.stop()
     }
 
     /// Picks the sound for a change in the game, like the web TV page does.
     func react(from a: TVState?, to b: TVState) {
+        pickMusic(from: a, to: b)
         guard let a = a else { return }
         if a.phase != b.phase {
             if a.phase == "final-answer" { stopMusic(); play("timeout") }

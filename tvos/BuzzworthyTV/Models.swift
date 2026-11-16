@@ -33,12 +33,19 @@ struct TVState: Decodable {
     var archiveError: Bool?
     /// Board builder: the category names for round 1 and round 2, or nil while picking packs.
     var draft: [[String]]?
+    /// Correct answers in a row that make a player "on fire".
+    var hotStreak: Int?
+    /// Recent emoji reactions sent from phones.
+    var reactions: [Reaction]?
+    /// End-of-game awards (game over only).
+    var awards: [Award]?
 
     enum CodingKeys: String, CodingKey {
         case code, phase, round, now, deadline, duration, captainId, hostMode, hostName, hostConnected
         case controllerId, players, board, clue, lastResult, packs, categoryCount
         case answerTime, easyAvailable, easyMode
         case hasArchive, era, eras, archiveSeason, archiveLoading, archiveError, draft
+        case hotStreak, reactions, awards
         case finalRound = "final"
     }
 
@@ -58,6 +65,7 @@ struct Player: Decodable, Identifiable, Equatable {
     var score: Int
     var color: String
     var connected: Bool
+    var streak: Int?
 }
 
 struct Category: Decodable {
@@ -80,8 +88,35 @@ struct Clue: Decodable {
     var q: String?
     var answer: String?
     var buzzedId: String?
+    /// How fast the winner buzzed, in ms.
+    var buzzMs: Double?
+    /// Everyone who buzzed on this clue, fastest first.
+    var buzzes: [BuzzTime]?
     var tried: [String]
 }
+
+struct BuzzTime: Decodable, Identifiable {
+    var pid: String
+    var ms: Double
+    var won: Bool?
+    var id: String { pid }
+}
+
+struct Reaction: Decodable, Identifiable, Equatable {
+    var id: Int
+    var pid: String
+    var e: String
+}
+
+struct Award: Decodable, Identifiable {
+    var id: String
+    var title: String
+    var pid: String
+    var detail: String
+}
+
+/// "0.31s"
+func seconds(_ ms: Double) -> String { String(format: "%.2fs", ms / 1000) }
 
 struct LastResult: Decodable, Equatable {
     var pid: String
@@ -89,6 +124,8 @@ struct LastResult: Decodable, Equatable {
     var correct: Bool
     var delta: Int
     var overridden: Bool
+    var streak: Int?
+    var dd: Bool?
 }
 
 struct Pack: Decodable, Identifiable {

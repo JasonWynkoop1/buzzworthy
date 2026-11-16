@@ -99,6 +99,7 @@ struct PlayerCallout: View {
     let player: Player?
     let fallbackName: String
     let line: String
+    var speed: Double? = nil
 
     var body: some View {
         let c = player.map { Color(hex: $0.color) } ?? Theme.text
@@ -106,7 +107,16 @@ struct PlayerCallout: View {
             Avatar(name: player?.name ?? fallbackName, color: c, size: 104)
             VStack(alignment: .leading, spacing: 2) {
                 Text((player?.name ?? fallbackName).uppercased()).font(Theme.display(54)).foregroundColor(c).lineLimit(1)
-                Text(line).font(Theme.body(34, .semibold))
+                HStack(spacing: 14) {
+                    Text(line).font(Theme.body(34, .semibold))
+                    if let ms = speed {
+                        Text(seconds(ms))
+                            .font(Theme.title(24))
+                            .foregroundColor(Theme.ink)
+                            .padding(.horizontal, 14).padding(.vertical, 4)
+                            .background(Capsule().fill(Theme.yellow))
+                    }
+                }
             }
         }
     }
@@ -145,8 +155,12 @@ struct ClueView: View {
                 BuzzNow()
             }
         case "answering":
-            PlayerCallout(player: s.player(c.buzzedId), fallbackName: "Someone",
-                          line: s.hostMode ? "buzzed in. Say your answer!" : "buzzed in and is answering...")
+            VStack(alignment: .leading, spacing: 14) {
+                PlayerCallout(player: s.player(c.buzzedId), fallbackName: "Someone",
+                              line: s.hostMode ? "buzzed in. Say your answer!" : "buzzed in and is answering...",
+                              speed: c.buzzMs)
+                BuzzTimes(s: s, clue: c)
+            }
         case "dd-answer":
             PlayerCallout(player: s.player(s.controllerId), fallbackName: "Someone",
                           line: "wagered \(money(c.wager ?? 0)) and is answering...")
@@ -163,9 +177,44 @@ struct ClueView: View {
                 } else {
                     Text("Nobody buzzed in.").font(Theme.body(30)).foregroundColor(Theme.muted)
                 }
+                if let r = s.lastResult, r.correct, (r.streak ?? 0) >= (s.hotStreak ?? 3) {
+                    Text("\u{1F525} \(s.name(r.pid)) is on fire! \(r.streak ?? 0) in a row")
+                        .font(Theme.body(30, .heavy)).foregroundColor(Theme.column(1))
+                }
+                BuzzTimes(s: s, clue: c)
             }
         default:
             EmptyView()
+        }
+    }
+}
+
+/// Everyone who buzzed on this clue, fastest first, with their time.
+struct BuzzTimes: View {
+    let s: TVState
+    let clue: Clue
+
+    var body: some View {
+        let list = clue.buzzes ?? []
+        if !list.isEmpty {
+            let best = list[0].ms
+            HStack(spacing: 10) {
+                Eyebrow(text: "Buzz times", size: 16)
+                ForEach(Array(list.prefix(6).enumerated()), id: \.element.id) { i, b in
+                    let p = s.player(b.pid)
+                    HStack(spacing: 8) {
+                        Avatar(name: p?.name ?? "?", color: Color(hex: p?.color ?? "#ffffff"), size: 30)
+                        Text(p?.name ?? "Someone").font(Theme.body(22, .semibold)).lineLimit(1)
+                        Text(seconds(b.ms)).font(Theme.title(20))
+                        if i > 0 {
+                            Text("+" + String(format: "%.2f", (b.ms - best) / 1000)).font(Theme.body(18)).opacity(0.7)
+                        }
+                    }
+                    .foregroundColor(i == 0 ? Theme.ink : Theme.text)
+                    .padding(.leading, 5).padding(.trailing, 14).padding(.vertical, 5)
+                    .background(Capsule().fill(i == 0 ? Theme.yellow : Theme.surface2))
+                }
+            }
         }
     }
 }
@@ -457,24 +506,65 @@ struct Confetti: View {
 struct GameOverView: View {
     let s: TVState
     var body: some View {
-        let winner = s.players.sorted { $0.score > $1.score }.first
+        let top = s.players.map(\.score).max() ?? 0
+        let champs = s.players.filter { $0.score == top }
         ZStack {
             Confetti()
             Splash {
-                Eyebrow(text: "Tonight's champion", color: Theme.yellow)
-                Text((winner?.name ?? "Nobody").uppercased())
-                    .font(Theme.display(130))
-                    .foregroundColor(winner.map { Color(hex: $0.color) } ?? Theme.text)
+                Eyebrow(text: champs.count > 1 ? "It's a tie! Tonight's champions" : "Tonight's champion", color: Theme.yellow)
+                if champs.isEmpty {
+                    Text("NOBODY").font(Theme.display(130))
+                } else {
+                    HStack(spacing: 30) {
+                        ForEach(Array(champs.enumerated()), id: \.element.id) { i, p in
+                            if i > 0 { Text("&").foregroundColor(Theme.text) }
+                            Text(p.name.uppercased()).foregroundColor(Color(hex: p.color))
+                        }
+                    }
+                    .font(Theme.display(champs.count > 1 ? 90 : 130))
                     .minimumScaleFactor(0.4)
                     .lineLimit(1)
+                }
                 if let a = s.finalRound?.answer {
                     Sub(Text("The final answer was ") + Text(a).foregroundColor(Theme.text))
                 }
+                if let awards = s.awards, !awards.isEmpty {
+                    AwardCards(s: s, awards: awards)
+                }
                 Standings(s: s)
-                if let f = s.finalRound, !f.reveals.isEmpty, s.players.count <= 4 {
+                if let f = s.finalRound, !f.reveals.isEmpty, s.players.count <= 4, (s.awards ?? []).isEmpty {
                     RevealCards(s: s, f: f)
                 }
             }
         }
+    }
+}
+
+/// Fun end-of-game awards: Fastest Finger, Big Brain, On Fire, High Roller, Fearless.
+struct AwardCards: View {
+    let s: TVState
+    let awards: [Award]
+    @State private var shown = false
+
+    var body: some View {
+        HStack(spacing: 18) {
+            ForEach(Array(awards.enumerated()), id: \.element.id) { i, a in
+                let p = s.player(a.pid)
+                let c = Color(hex: p?.color ?? "#ffffff")
+                VStack(alignment: .leading, spacing: 4) {
+                    Eyebrow(text: a.title, color: Theme.yellow, size: 16)
+                    Text(p?.name ?? "Someone").font(Theme.display(30)).foregroundColor(c).lineLimit(1).minimumScaleFactor(0.6)
+                    Text(a.detail).font(Theme.body(20)).foregroundColor(Theme.muted).lineLimit(1)
+                }
+                .padding(.horizontal, 22).padding(.vertical, 14)
+                .frame(minWidth: 240, alignment: .leading)
+                .background(RoundedRectangle(cornerRadius: 22).fill(Theme.surface))
+                .overlay(alignment: .top) { Rectangle().fill(c).frame(height: 6).clipShape(RoundedRectangle(cornerRadius: 3)).padding(.horizontal, 18) }
+                .scaleEffect(shown ? 1 : 0.6)
+                .opacity(shown ? 1 : 0)
+                .animation(.spring(response: 0.5).delay(0.4 + Double(i) * 0.25), value: shown)
+            }
+        }
+        .onAppear { shown = true }
     }
 }

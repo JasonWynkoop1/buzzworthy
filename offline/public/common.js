@@ -77,39 +77,76 @@ const BW = {
   },
 };
 
-// Little synth so we don't ship any audio files.
+// Recorded sounds and music (all CC0, see sounds/CREDITS.txt), the same ones the Apple TV app plays.
+// Browsers only allow audio after a click or key press on the page, so the TV
+// page calls Sound.unlock() on the first one. Sound effects and the music each
+// have their own on/off switch, remembered on this computer.
 const Sound = {
-  ctx: null,
-  on: false,
-  enable() {
-    try {
-      this.ctx = this.ctx || new (window.AudioContext || window.webkitAudioContext)();
-      this.ctx.resume();
-      this.on = true;
-    } catch (e) {}
+  NAMES: ['pick', 'open', 'buzz', 'correct', 'wrong', 'timeout', 'dd', 'board', 'think', 'fanfare', 'theme'],
+  els: {},
+  unlocked: false,
+  fx: true,
+  musicOn: true,
+  want: null,        // the music that should be playing now ('theme', 'think' or null)
+  fade: null,
+  init() {
+    try { this.fx = localStorage.getItem('bw-fx') !== '0'; this.musicOn = localStorage.getItem('bw-music') !== '0'; } catch (e) {}
+    for (const n of this.NAMES) {
+      const a = new Audio('/sounds/' + n + '.mp3');
+      a.preload = 'auto';
+      if (n === 'theme') { a.loop = true; a.volume = 0.45; }
+      this.els[n] = a;
+    }
   },
-  tone(freq, dur, type = 'sine', vol = 0.2, when = 0, slideTo) {
-    if (!this.on || !this.ctx) return;
-    const t = this.ctx.currentTime + when;
-    const o = this.ctx.createOscillator();
-    const g = this.ctx.createGain();
-    o.type = type;
-    o.frequency.setValueAtTime(freq, t);
-    if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t + dur);
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(vol, t + 0.02);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    o.connect(g).connect(this.ctx.destination);
-    o.start(t);
-    o.stop(t + dur + 0.05);
+  // Try to start audio. Resolves true when the browser allowed it.
+  unlock() {
+    if (this.unlocked) return Promise.resolve(true);
+    const a = this.els.open;
+    a.volume = 0;
+    return a.play().then(() => {
+      a.pause(); a.currentTime = 0; a.volume = 1;
+      this.unlocked = true;
+      this.sync();
+      return true;
+    }).catch(() => { a.volume = 1; return false; });
   },
-  pick() { this.tone(660, 0.12, 'triangle'); this.tone(990, 0.15, 'triangle', 0.15, 0.08); },
-  open() { this.tone(880, 0.08, 'square', 0.08); },
-  buzz() { this.tone(220, 0.35, 'sawtooth', 0.18, 0, 440); },
-  correct() { [523, 659, 784, 1047].forEach((f, i) => this.tone(f, 0.25, 'triangle', 0.18, i * 0.09)); },
-  wrong() { this.tone(180, 0.5, 'square', 0.12, 0, 90); },
-  timeout() { this.tone(300, 0.25, 'sine', 0.15); this.tone(240, 0.4, 'sine', 0.15, 0.25); },
-  dd() { [392, 523, 659, 784, 1047, 1319].forEach((f, i) => this.tone(f, 0.3, 'sawtooth', 0.08, i * 0.07)); },
-  fanfare() { [523, 523, 523, 659, 784, 659, 784, 1047].forEach((f, i) => this.tone(f, 0.3, 'triangle', 0.18, i * 0.14)); },
-  tick() { this.tone(1200, 0.04, 'square', 0.04); },
+  play(n) {
+    const a = this.els[n];
+    if (!a || !this.fx || !this.unlocked) return;
+    try { a.currentTime = 0; } catch (e) {}
+    a.play().catch(() => {});
+  },
+  // Music: the lobby theme or the final-round thinking music.
+  music(n) {
+    if (this.want === n) return;
+    this.want = n;
+    this.sync();
+  },
+  sync() {
+    if (!this.unlocked) return;
+    for (const n of ['theme', 'think']) {
+      const a = this.els[n];
+      const on = this.want === n && (n === 'think' ? this.fx : this.musicOn);
+      if (on && a.paused) {
+        if (n === 'theme') { a.volume = 0; this.fadeTo(a, 0.45); }
+        else { try { a.currentTime = 0; } catch (e) {} a.volume = 0.8; }
+        a.play().catch(() => {});
+      } else if (!on && !a.paused) {
+        if (n === 'theme') this.fadeTo(a, 0, () => a.pause());
+        else a.pause();
+      }
+    }
+  },
+  fadeTo(a, target, done) {
+    clearInterval(this.fade);
+    const step = (target - a.volume) / 12;
+    let i = 0;
+    this.fade = setInterval(() => {
+      i++;
+      a.volume = Math.max(0, Math.min(1, i >= 12 ? target : a.volume + step));
+      if (i >= 12) { clearInterval(this.fade); done && done(); }
+    }, 40);
+  },
+  setFx(on) { this.fx = on; try { localStorage.setItem('bw-fx', on ? '1' : '0'); } catch (e) {} this.sync(); },
+  setMusic(on) { this.musicOn = on; try { localStorage.setItem('bw-music', on ? '1' : '0'); } catch (e) {} this.sync(); },
 };

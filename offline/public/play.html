@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<meta name="theme-color" content="#12082b">
+<meta name="theme-color" content="#0e0f1a">
 <title>Buzzworthy</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@700;900&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/style.css">
 <style>
   html, body { height: 100%; }
@@ -15,16 +15,16 @@
   .top { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 4px solid var(--c, var(--hot)); background: rgba(0,0,0,.2); }
   .top .name { font-weight: 800; font-size: 18px; }
   .top .name small { font-weight: 600; color: var(--muted); font-size: 12px; margin-left: 6px; }
-  .top .score { font-family: 'Bungee'; font-size: 22px; }
+  .top .score { font-family: var(--display); font-weight: 900; font-size: 22px; }
   .top .score.neg { color: var(--bad); }
   #app { flex: 1; display: flex; flex-direction: column; padding: 16px; gap: 14px; min-height: 0; }
-  .center { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; gap: 14px; }
-  .logo { font-family: 'Bungee'; font-size: 40px; line-height: 1; background: linear-gradient(120deg, var(--hot), var(--sun) 60%, var(--cool)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .center { flex: 1; display: flex; flex-direction: column; justify-content: safe center; align-items: center; text-align: center; gap: 14px; }
+  .logo { font-family: var(--display); font-weight: 900; font-size: 36px; line-height: 1; color: var(--sun); }
   .msg { font-size: 20px; font-weight: 600; }
   .muted { color: var(--muted); }
   .err { color: var(--bad); min-height: 20px; }
   .stack { display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 420px; }
-  .buzzer { width: min(78vw, 46vh); height: min(78vw, 46vh); border-radius: 50%; font-family: 'Bungee'; font-size: min(12vw, 7vh); color: #fff; touch-action: manipulation; transition: transform .06s, filter .2s, background .2s; border: 0; }
+  .buzzer { width: min(78vw, 46vh); height: min(78vw, 46vh); border-radius: 50%; font-family: var(--display); font-weight: 900; font-size: min(12vw, 7vh); color: #fff; touch-action: manipulation; transition: transform .06s, filter .2s, background .2s; border: 0; }
   .buzzer.idle { background: radial-gradient(circle at 35% 30%, #5a4a7a, #2a2140); box-shadow: 0 10px 0 #18122a; color: var(--muted); }
   .buzzer.live { background: radial-gradient(circle at 35% 30%, #ff8fb1, #e0245e 60%, #a1123d); box-shadow: 0 10px 0 #6d0b29, 0 0 40px rgba(255,93,143,.7); animation: glow .6s infinite alternate; }
   .buzzer.live:active { transform: translateY(8px); box-shadow: 0 2px 0 #6d0b29; }
@@ -32,38 +32,52 @@
   .buzzer.locked { background: radial-gradient(circle at 35% 30%, #555, #2b2b2b); box-shadow: 0 10px 0 #111; color: #888; }
   @keyframes glow { to { filter: brightness(1.15); } }
   .clueq { font-size: 17px; line-height: 1.35; background: var(--panel); padding: 12px 14px; border-radius: 14px; }
-  .cat { font-family: 'Bungee'; color: var(--sun); font-size: 14px; }
+  .cat { font-family: var(--display); font-weight: 900; color: var(--sun); font-size: 14px; }
   .mini { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; flex: 1; grid-template-rows: auto repeat(5, 1fr); min-height: 0; }
-  .mini .h { font-size: 9px; font-weight: 800; text-transform: uppercase; text-align: center; line-height: 1.1; display: flex; align-items: center; justify-content: center; padding: 4px 2px; background: #2c1460; border-radius: 6px; overflow-wrap: anywhere; hyphens: auto; }
-  .mini button { padding: 0; font-family: 'Bungee'; font-size: 13px; color: var(--sun); background: linear-gradient(160deg, var(--tile1), var(--tile2)); border-radius: 8px; min-height: 44px; }
+  .mini .h { font-size: 9px; font-weight: 800; text-transform: uppercase; text-align: center; line-height: 1.1; display: flex; align-items: center; justify-content: center; padding: 4px 2px; background: var(--panel); border-bottom: 3px solid var(--col); border-radius: 6px; overflow-wrap: anywhere; hyphens: auto; }
+  .mini button { padding: 0; font-family: var(--display); font-weight: 900; font-size: 13px; color: var(--ink); background: var(--col); border-radius: 8px; min-height: 44px; }
   .mini button:disabled { background: rgba(255,255,255,.04); color: transparent; opacity: 1; }
   .timer { height: 8px; border-radius: 8px; background: rgba(255,255,255,.1); overflow: hidden; width: 100%; }
-  .timer i { display: block; height: 100%; background: linear-gradient(90deg, var(--hot), var(--sun)); transform-origin: left; }
+  .timer i { display: block; height: 100%; background: linear-gradient(90deg, var(--c0), var(--sun)); transform-origin: left; }
   .captain { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; padding: 10px 16px 16px; border-top: 1px dashed rgba(255,255,255,.15); }
   .captain:empty { display: none; }
   .captain::before { content: 'Captain controls'; width: 100%; text-align: center; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; }
   .captain button { padding: 10px 14px; font-size: 14px; }
-  .big { font-family: 'Bungee'; font-size: 34px; line-height: 1.1; }
+  .big { font-family: var(--display); font-weight: 900; font-size: 34px; line-height: 1.1; }
   .ok { color: var(--good); }
   .no { color: var(--bad); }
   .quick { display: flex; gap: 8px; }
   .quick button { flex: 1; padding: 10px 0; font-size: 14px; }
-  .mini button.dd { color: #10082a; background: var(--sun); box-shadow: inset 0 0 0 2px #fff; }
+  .mini button.dd { color: var(--ink); background: #fff; box-shadow: inset 0 0 0 3px var(--col); }
   .mini button.dd::after { content: 'DD'; display: block; font-size: 9px; line-height: 1; }
-  .mini button.dd:disabled { color: transparent; background: rgba(255,209,102,.12); box-shadow: none; }
+  .mini button.dd:disabled { color: transparent; background: rgba(255,255,255,.12); box-shadow: none; }
   .mini button.dd:disabled::after { content: ''; }
-  .clock { font-family: 'Bungee'; font-size: 44px; color: var(--sun); line-height: 1; }
-  .sheet { position: fixed; inset: 0; background: rgba(8,4,24,.75); display: none; align-items: flex-end; justify-content: center; z-index: 8; }
+  .clock { font-family: var(--display); font-weight: 900; font-size: 44px; color: var(--sun); line-height: 1; }
+  .sheet { position: fixed; inset: 0; background: rgba(8,8,16,.75); display: none; align-items: flex-end; justify-content: center; z-index: 8; }
   .sheet.open { display: flex; }
-  .sheet-in { width: 100%; max-width: 480px; max-height: 88vh; overflow: auto; background: #1d0e46; border-radius: 20px 20px 0 0; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+  .sheet-in { width: 100%; max-width: 480px; max-height: 88vh; overflow: auto; background: var(--bg2); border-radius: 20px 20px 0 0; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
   .sheet .hd { display: flex; justify-content: space-between; align-items: center; font-weight: 800; font-size: 18px; }
   .sheet .hd button { padding: 8px 14px; font-size: 14px; }
   .srow { display: grid; grid-template-columns: 1fr auto 44px 44px 52px; gap: 6px; align-items: center; background: var(--panel); border-left: 5px solid var(--c); border-radius: 12px; padding: 8px 8px 8px 12px; }
   .srow .n { font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .srow b { font-family: 'Bungee'; font-size: 15px; margin-right: 4px; }
+  .srow b { font-family: var(--display); font-weight: 900; font-size: 15px; margin-right: 4px; }
   .srow b.neg { color: var(--bad); }
   .srow button { padding: 8px 0; font-size: 18px; }
   .srow button.set { font-size: 13px; }
+  .streak { font-size: 14px; margin-left: 6px; }
+  .reactbar { display: none; justify-content: center; gap: 6px; padding: 8px 12px 4px; }
+  .reactbar.on { display: flex; }
+  .reactbar button { flex: 1; max-width: 64px; font-size: 26px; padding: 8px 0; background: var(--panel); border: 1px solid var(--line); }
+  .reactbar button:active { transform: scale(.9); }
+  .times { display: flex; flex-direction: column; gap: 6px; width: 100%; max-width: 360px; }
+  .times div { display: flex; justify-content: space-between; background: var(--panel); border-left: 5px solid var(--c); border-radius: 10px; padding: 6px 12px; font-weight: 600; }
+  .times div.me { outline: 2px solid var(--sun); }
+  .times b { font-family: var(--display); font-weight: 700; font-size: 14px; }
+  .mytime { font-family: var(--display); font-weight: 700; font-size: 16px; color: var(--ink); background: var(--sun); padding: 4px 12px; border-radius: 20px; }
+  .award { background: var(--panel); border-top: 4px solid var(--sun); border-radius: 12px; padding: 8px 14px; }
+  .award b { color: var(--sun); text-transform: uppercase; letter-spacing: .1em; font-size: 12px; display: block; }
+  .kick { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+  .kick button { padding: 6px 10px; font-size: 13px; }
   .banner { position: fixed; top: 0; left: 0; right: 0; text-align: center; background: var(--bad); padding: 6px; font-weight: 600; display: none; z-index: 9; }
 </style>
 </head>
@@ -71,6 +85,7 @@
 <div class="banner" id="conn">Reconnecting...</div>
 <div class="top" id="top" style="display:none"></div>
 <div id="app"></div>
+<div class="reactbar" id="reactbar"></div>
 <div class="captain" id="captain"></div>
 <div class="sheet" id="scores"></div>
 
@@ -97,7 +112,7 @@ function showJoin(error) {
     <div class="center">
       <div class="logo">BUZZ<br>WORTHY</div>
       <div class="stack">
-        <input id="room" placeholder="Room code" maxlength="4" autocapitalize="characters" value="${BW.esc(room)}" style="text-transform:uppercase;text-align:center;letter-spacing:.3em;font-family:Bungee">
+        <input id="room" placeholder="Room code" maxlength="4" autocapitalize="characters" value="${BW.esc(room)}" style="text-transform:uppercase;text-align:center;letter-spacing:.3em;font-family:var(--display);font-weight:900">
         <input id="name" placeholder="Your name" maxlength="16" value="${BW.esc(load('bw-name') || '')}">
         <button id="joinbtn">Join as a player</button>
         <button id="hostbtn" class="ghost">Join as the host</button>
@@ -152,7 +167,8 @@ function renderTop() {
   const t = document.getElementById('top');
   t.style.display = 'flex';
   t.style.setProperty('--c', me ? me.color : '');
-  t.innerHTML = `<div class="name">${me ? BW.esc(me.name) : ''}<small>${S.me.isCaptain ? '★ captain' : ''} · Room ${S.code}</small></div>
+  const fire = me && me.streak >= (S.hotStreak || 3) ? `<span class="streak">&#128293;${me.streak}</span>` : '';
+  t.innerHTML = `<div class="name">${me ? BW.esc(me.name) : ''}${fire}<small>${S.me.isCaptain ? '★ captain' : ''} · Room ${S.code}</small></div>
     <div class="score ${S.me.score < 0 ? 'neg' : ''}">${BW.money(S.me.score)}</div>`;
 }
 
@@ -204,6 +220,14 @@ document.addEventListener('click', (e) => {
     const n = Math.round(Number(String(v).replace(/[$,\s]/g, '')));
     if (!Number.isFinite(n)) return alert('That is not a number.');
     if (n !== p.score) act('adjustScore', { targetPid: p.id, delta: n - p.score });
+    return;
+  }
+  const rx = e.target.closest('[data-react]');
+  if (rx) { act('react', { e: Number(rx.dataset.react) }); navigator.vibrate && navigator.vibrate(15); return; }
+  const kk = e.target.closest('[data-kick]');
+  if (kk) {
+    const p = S.players.find((x) => x.id === kk.dataset.kick);
+    if (p && confirm(`Remove ${p.name} from the game?`)) act('kick', { targetPid: p.id });
     return;
   }
   const sec = e.target.closest('[data-sec]');
@@ -283,7 +307,7 @@ function wagerForm(key, type, min, max, extraHtml = '') {
     <div class="stack" style="margin:auto">
       ${extraHtml}
       <div class="msg">Wager between ${BW.money(min)} and ${BW.money(max)}</div>
-      <input id="wager" type="number" inputmode="numeric" min="${min}" max="${max}" placeholder="Amount" style="text-align:center;font-family:Bungee;font-size:28px">
+      <input id="wager" type="number" inputmode="numeric" min="${min}" max="${max}" placeholder="Amount" style="text-align:center;font-family:var(--display);font-weight:900;font-size:28px">
       <div class="quick">
         <button class="ghost" data-w="${min}">Min</button>
         <button class="ghost" data-w="${Math.round(max / 2)}">Half</button>
@@ -305,8 +329,44 @@ function wagerForm(key, type, min, max, extraHtml = '') {
     });
 }
 
+// Shown on the phone of whoever won the buzz.
+function myTime(c) {
+  return c && c.buzzMs != null ? `<span class="mytime">Buzzed in ${(c.buzzMs / 1000).toFixed(2)}s</span>` : '';
+}
+
+// Everyone's buzz time for this clue, fastest first.
+function buzzTimes(c) {
+  const list = (c && c.buzzes) || [];
+  if (!list.length) return '';
+  return `<div class="muted" style="font-size:12px;text-transform:uppercase;letter-spacing:.1em">Buzz times</div><div class="times">${list.map((b, i) => {
+    const p = S.players.find((x) => x.id === b.pid);
+    return `<div class="${b.pid === pid ? 'me' : ''}" style="--c:${p ? p.color : '#fff'}"><span>${i + 1}. ${p ? BW.esc(p.name) : 'Someone'}</span><b>${(b.ms / 1000).toFixed(2)}s</b></div>`;
+  }).join('')}</div>`;
+}
+
+// Captain or host can remove a stray or duplicate player before the game starts.
+function kickButtons(s) {
+  const others = s.players.filter((p) => p.id !== pid);
+  if (!others.length) return '';
+  return `<div class="muted" style="font-size:13px">Tap a name to remove that player</div><div class="kick">${others.map((p) => `<button class="ghost" data-kick="${p.id}">&#10005; ${BW.esc(p.name)}</button>`).join('')}</div>`;
+}
+
+// Emoji reactions: everyone who is waiting can cheer or groan on the TV.
+const REACTS = ['\u{1F44F}', '\u{1F602}', '\u{1F631}', '\u{1F525}', '\u{1F92F}', '\u{1F389}'];
+function renderReacts() {
+  const bar = document.getElementById('reactbar');
+  const s = S, ph = s.phase, c = s.clue;
+  let on = !s.me.isHost && ['lobby', 'board', 'answering', 'reveal', 'dd-wager', 'dd-answer', 'round-end', 'final-reveal', 'gameover'].includes(ph);
+  if (ph === 'board' && s.controllerId === pid) on = false;
+  if (ph === 'answering' && c && c.buzzedId === pid) on = false;
+  if ((ph === 'dd-wager' || ph === 'dd-answer') && s.controllerId === pid) on = false;
+  bar.classList.toggle('on', on);
+  if (on && !bar.childElementCount) bar.innerHTML = REACTS.map((e, i) => `<button data-react="${i}">${e}</button>`).join('');
+}
+
 function render() {
   renderScores();
+  renderReacts();
   if (S.me.isHost) { renderTop(); renderCaptain(); return renderHost(); }
   renderTop();
   renderCaptain();
@@ -315,11 +375,12 @@ function render() {
 
   if (ph === 'lobby') {
     const packHtml = s.me.isCaptain ? `<div class="stack" style="margin-top:8px">
+        ${kickButtons(s)}
         ${eraButtons(s)}
         ${packControls(s)}
       </div>` : s.draft ? `<div class="muted">Board: ${s.draft.flat().map(BW.esc).join(', ')}</div>`
         : `<div class="muted">Packs: ${s.packs.filter((pk) => pk.selected).map((pk) => BW.esc(pk.title)).join(', ')}</div>`;
-    return setScreen('lobby-' + s.players.length + s.me.isCaptain + setupKey(s), `<div class="center" style="overflow:auto">
+    return setScreen('lobby-' + s.players.map((p) => p.id).join('') + s.me.isCaptain + setupKey(s), `<div class="center" style="overflow:auto">
       <div class="logo">YOU'RE IN!</div>
       <div class="msg">${s.players.length} player${s.players.length === 1 ? '' : 's'} in the room</div>
       <div class="muted">${s.me.isCaptain ? 'You are the captain. Choose question packs, then tap Start game when everyone has joined.' : 'Waiting for the captain to start the game...'}</div>
@@ -335,8 +396,8 @@ function render() {
       return setScreen(key, `
         <div class="msg" style="text-align:center">Your pick!</div>
         <div class="mini">
-          ${s.board.map((cc) => `<div class="h">${BW.esc(cc.name)}</div>`).join('')}
-          ${[0, 1, 2, 3, 4].map((ri) => s.board.map((cc, ci) => `<button data-pick="${ci},${ri}" ${cc.clues[ri].used ? 'disabled' : ''}>${cc.clues[ri].value}</button>`).join('')).join('')}
+          ${s.board.map((cc, ci) => `<div class="h" style="--col:var(--c${ci})">${BW.esc(cc.name)}</div>`).join('')}
+          ${[0, 1, 2, 3, 4].map((ri) => s.board.map((cc, ci) => `<button style="--col:var(--c${ci})" data-pick="${ci},${ri}" ${cc.clues[ri].used ? 'disabled' : ''}>${cc.clues[ri].value}</button>`).join('')).join('')}
         </div>`);
     }
     return setScreen('board-wait-' + s.controllerId, `<div class="center">
@@ -348,16 +409,16 @@ function render() {
     const clueHtml = `<div class="cat">${BW.esc(c.cat)} · $${c.value}</div><div class="clueq">${BW.esc(c.q)}</div>`;
     if (ph === 'answering' && c.buzzedId === pid) {
       if (s.hostMode) return setScreen('say-' + c.ci + c.ri + s.round + '-' + c.tried.length, `${clueHtml}<div class="center">
-        <div class="big ok">YOU'RE UP!</div>
+        <div class="big ok">YOU'RE UP!</div>${myTime(c)}
         <div class="msg">Say your answer out loud.</div>
         ${s.deadline ? '<div class="clock" data-timer-text data-zero="TIME!"></div><div class="timer"><i data-timer-bar data-total="' + s.duration + '"></i></div>' : ''}
         <div class="muted">${BW.esc(s.hostName || 'The host')} will decide if you're right.</div></div>`);
-      return answerForm('ans-' + c.ci + c.ri + s.round + '-' + c.tried.length, 'answer', 'Your answer', `<div class="big ok" style="text-align:center">You got it!</div>${clueHtml}`);
+      return answerForm('ans-' + c.ci + c.ri + s.round + '-' + c.tried.length, 'answer', 'Your answer', `<div class="big ok" style="text-align:center">You got it!</div><div style="text-align:center">${myTime(c)}</div>${clueHtml}`);
     }
     let cls = 'idle', label = 'WAIT', sub = 'Buzzers unlock after the clue is read. Buzzing early locks you out briefly.';
     if (ph === 'open') { cls = 'live'; label = 'BUZZ!'; sub = 'Go go go!'; }
     if (c.tried.includes(pid)) { cls = 'locked'; label = 'OUT'; sub = 'You already took a shot at this one.'; }
-    if (ph === 'answering') { cls = 'locked'; label = '...'; sub = `<b>${pname(c.buzzedId)}</b> is answering.`; }
+    if (ph === 'answering') { cls = 'locked'; label = '...'; sub = `<b>${pname(c.buzzedId)}</b> buzzed in first${c.buzzMs != null ? ` (${(c.buzzMs / 1000).toFixed(2)}s)` : ''} and is answering.`; }
     if (flash) sub = flash;
     const key = `buzz-${c.ci}${c.ri}-${ph}-${cls}-${c.tried.length}-${flash}`;
     return setScreen(key, `${clueHtml}<div class="center">
@@ -366,9 +427,12 @@ function render() {
       const b = document.getElementById('buzz');
       b.addEventListener('pointerdown', async (e) => {
         e.preventDefault();
-        if (S.phase !== 'reading' && S.phase !== 'open') return;
+        // Taps after someone else won still count, so everyone gets a buzz time.
+        if (!['reading', 'open', 'answering'].includes(S.phase)) return;
         const r = await act('buzz');
-        if (r.result === 'early') { flash = 'Too early! Wait for the red button.'; screenKey = ''; render(); setTimeout(() => { flash = ''; screenKey = ''; render(); }, 900); }
+        const say = (msg, ms) => { flash = msg; screenKey = ''; render(); setTimeout(() => { if (flash === msg) { flash = ''; screenKey = ''; render(); } }, ms); };
+        if (r.result === 'early') say('Too early! Wait for the red button.', 900);
+        if (r.result === 'late') say(`Beaten to it! Your time: ${(r.ms / 1000).toFixed(2)}s`, 2500);
       });
     });
   }
@@ -390,10 +454,12 @@ function render() {
   if (ph === 'reveal') {
     const r = s.lastResult;
     const mine = r && r.pid === pid;
-    return setScreen(`reveal-${c.ci}${c.ri}-${r ? r.correct : ''}`, `<div class="center">
+    return setScreen(`reveal-${c.ci}${c.ri}-${r ? r.correct : ''}-${(c.buzzes || []).length}`, `<div class="center">
       <div class="muted">The answer was</div>
       <div class="big" style="color:var(--sun)">${BW.esc(c.answer)}</div>
       ${mine ? `<div class="big ${r.correct ? 'ok' : 'no'}">${r.correct ? '+' : '-'}${BW.money(r.delta)}</div>` : ''}
+      ${mine && r.correct && r.streak >= (s.hotStreak || 3) ? `<div class="msg">&#128293; You're on fire! ${r.streak} in a row</div>` : ''}
+      ${buzzTimes(c)}
     </div>`);
   }
 
@@ -426,11 +492,14 @@ function render() {
   }
 
   if (ph === 'gameover') {
-    const sorted = s.players.slice().sort((a, b) => b.score - a.score);
-    const place = sorted.findIndex((p) => p.id === pid) + 1;
-    return setScreen('go-' + place + s.me.score, `<div class="center">
-      <div class="logo">${place === 1 ? 'YOU WIN!' : 'GAME OVER'}</div>
-      <div class="msg">You finished #${place} with ${BW.money(s.me.score)}</div></div>`);
+    // Ties share a place, so two players on top are both champions.
+    const place = s.players.filter((p) => p.score > s.me.score).length + 1;
+    const tied = s.players.filter((p) => p.score === s.me.score).length > 1;
+    const mine = (s.awards || []).filter((a) => a.pid === pid);
+    return setScreen('go-' + place + s.me.score + mine.length, `<div class="center">
+      <div class="logo">${place === 1 ? (tied ? "IT'S A TIE!" : 'YOU WIN!') : 'GAME OVER'}</div>
+      <div class="msg">You finished ${tied ? 'tied for ' : ''}#${place} with ${BW.money(s.me.score)}</div>
+      ${mine.map((a) => `<div class="award"><b>${BW.esc(a.title)}</b>${BW.esc(a.detail)}</div>`).join('')}</div>`);
   }
 }
 
@@ -439,7 +508,7 @@ function renderHost() {
   const s = S, ph = s.phase, c = s.clue, sec = s.secret || {};
   const ansBox = (a, alt) => `<div style="background:rgba(255,209,102,.12);border:2px solid var(--sun);border-radius:14px;padding:10px 14px">
       <div class="muted" style="font-size:12px;text-transform:uppercase;letter-spacing:.1em">Answer (only you can see this)</div>
-      <div style="font-family:Bungee;font-size:24px;color:var(--sun)">${BW.esc(a || '')}</div>
+      <div style="font-family:var(--display);font-weight:900;font-size:24px;color:var(--sun)">${BW.esc(a || '')}</div>
       ${alt && alt.length ? `<div class="muted" style="font-size:13px">Also accept: ${alt.map(BW.esc).join(', ')}</div>` : ''}</div>`;
   const clueBlock = () => `<div class="cat">${BW.esc(c.cat)} · ${c.dd ? 'Daily Double' + (c.wager ? ' · wager ' + BW.money(c.wager) : '') : '$' + c.value}</div>
       <div class="clueq" style="font-size:20px">${BW.esc(sec.q || c.q || '')}</div>${ansBox(sec.answer, sec.alt)}`;
@@ -448,8 +517,9 @@ function renderHost() {
       <button data-judge="0" style="flex:1;padding:22px 0;font-size:22px;background:var(--bad)">&#10007; Wrong</button></div>`;
 
   if (ph === 'lobby') {
-    return setScreen('h-lobby-' + s.players.length + setupKey(s) + s.answerTime, `<div class="center" style="overflow:auto">
+    return setScreen('h-lobby-' + s.players.map((p) => p.id).join('') + setupKey(s) + s.answerTime, `<div class="center" style="overflow:auto">
       <div class="logo">YOU'RE THE HOST</div>
+      ${kickButtons(s)}
       <div class="msg">${s.players.length} player${s.players.length === 1 ? '' : 's'} joined</div>
       <div class="muted">You'll read each clue out loud, open the buzzers, and judge spoken answers. Tap Start game when everyone is in.</div>
       <div class="stack" style="margin-top:8px">
@@ -465,10 +535,10 @@ function renderHost() {
     const key = 'h-board-' + s.round + s.controllerId + s.board.map((cc) => cc.clues.map((x) => (x.used ? 1 : 0)).join('')).join('') + JSON.stringify(dd);
     return setScreen(key, `
       <div class="msg" style="text-align:center"><b>${pname(s.controllerId)}</b> picks a clue.</div>
-      <div class="muted" style="text-align:center;font-size:13px">They pick on their phone, or tell you and you tap it here.${ddLeft ? ` Gold tiles are Daily Doubles (${ddLeft} left, only you can see them).` : ''}</div>
+      <div class="muted" style="text-align:center;font-size:13px">They pick on their phone, or tell you and you tap it here.${ddLeft ? ` White tiles are Daily Doubles (${ddLeft} left, only you can see them).` : ''}</div>
       <div class="mini">
-        ${s.board.map((cc) => `<div class="h">${BW.esc(cc.name)}</div>`).join('')}
-        ${[0, 1, 2, 3, 4].map((ri) => s.board.map((cc, ci) => `<button class="${dd[ci] && dd[ci][ri] ? 'dd' : ''}" data-pick="${ci},${ri}" ${cc.clues[ri].used ? 'disabled' : ''}>${cc.clues[ri].value}</button>`).join('')).join('')}
+        ${s.board.map((cc, ci) => `<div class="h" style="--col:var(--c${ci})">${BW.esc(cc.name)}</div>`).join('')}
+        ${[0, 1, 2, 3, 4].map((ri) => s.board.map((cc, ci) => `<button style="--col:var(--c${ci})" class="${dd[ci] && dd[ci][ri] ? 'dd' : ''}" data-pick="${ci},${ri}" ${cc.clues[ri].used ? 'disabled' : ''}>${cc.clues[ri].value}</button>`).join('')).join('')}
       </div>`);
   }
   if (ph === 'reading') {

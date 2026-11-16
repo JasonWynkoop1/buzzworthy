@@ -11,6 +11,8 @@ final class GameHost: ObservableObject {
     @Published private(set) var problem: String?
 
     let sound = SoundPlayer()
+    /// Mirrors sound.musicOn so the Music button label updates.
+    @Published private(set) var musicOn = true
     private let realtime = RealtimeClient()
     private var context: JSContext!
     private var timers: [Int: Timer] = [:]
@@ -21,6 +23,7 @@ final class GameHost: ObservableObject {
     func start() {
         guard !started else { return }
         started = true
+        musicOn = sound.musicOn
         guard setUpEngine() else { return }
         realtime.onStatus = { [weak self] up in
             guard let self = self else { return }
@@ -66,6 +69,12 @@ final class GameHost: ObservableObject {
         call("act", String(decoding: data, as: UTF8.self))
     }
     func act(_ type: String) { act(["type": type]) }
+
+    /// Turns the theme music on or off (remembered between launches).
+    func toggleMusic() {
+        sound.setMusic(!sound.musicOn)
+        musicOn = sound.musicOn
+    }
 
     // MARK: engine
 
